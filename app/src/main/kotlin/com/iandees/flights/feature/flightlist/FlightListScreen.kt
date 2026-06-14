@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -11,11 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.iandees.flights.core.model.Flight
+import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -32,6 +35,15 @@ fun FlightListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     var showMenu by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // Scroll to the today divider once on first load
+    LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading && uiState.todayIndex > 0) {
+            coroutineScope.launch { listState.scrollToItem(uiState.todayIndex) }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -90,7 +102,7 @@ fun FlightListScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (uiState.flights.isEmpty()) {
+            } else if (uiState.items.none { it is FlightListItem.FlightRow }) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = if (searchQuery.isBlank())
@@ -99,10 +111,12 @@ fun FlightListScreen(
                             "No flights match \"$searchQuery\".",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
                     )
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         end = 16.dp,
@@ -111,16 +125,56 @@ fun FlightListScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(uiState.flights, key = { it.id }) { flight ->
-                        FlightCard(
-                            flight = flight,
-                            onClick = { onFlightClick(flight.id) },
-                            onDelete = { viewModel.deleteFlight(flight.id) },
-                        )
+                    items(uiState.items, key = { item ->
+                        when (item) {
+                            is FlightListItem.MonthHeader  -> "header_${item.label}"
+                            is FlightListItem.TodayDivider -> "today_divider"
+                            is FlightListItem.FlightRow    -> "flight_${item.flight.id}"
+                        }
+                    }) { item ->
+                        when (item) {
+                            is FlightListItem.MonthHeader  -> MonthHeader(item.label)
+                            is FlightListItem.TodayDivider -> TodayDivider()
+                            is FlightListItem.FlightRow    -> FlightCard(
+                                flight  = item.flight,
+                                onClick = { onFlightClick(item.flight.id) },
+                                onDelete = { viewModel.deleteFlight(item.flight.id) },
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MonthHeader(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 2.dp),
+    )
+}
+
+@Composable
+private fun TodayDivider() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f))
+        Text(
+            text = "  Today  ",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f))
     }
 }
 
