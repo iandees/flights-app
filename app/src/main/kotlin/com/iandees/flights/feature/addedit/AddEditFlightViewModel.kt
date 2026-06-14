@@ -29,11 +29,9 @@ data class AddEditUiState(
 
     val departureDate: String = "",
     val departureTime: String = "",
-    val departureTimezone: String = "",
 
     val arrivalDate: String = "",
     val arrivalTime: String = "",
-    val arrivalTimezone: String = "",
 
     val recordLocator: String = "",
     val ticketNumber: String = "",
@@ -55,7 +53,6 @@ class AddEditFlightViewModel @Inject constructor(
     private val airportTz: AirportTimezoneRepository,
     private val airportSearch: AirportSearchRepository,
     private val airlineSearch: AirlineSearchRepository,
-    private val timezoneSearch: TimezoneSearchRepository,
     private val flightLookup: FlightLookupService,
     private val settings: AppSettingsRepository,
 ) : ViewModel() {
@@ -73,28 +70,13 @@ class AddEditFlightViewModel @Inject constructor(
     private val _airlineSuggestions = MutableStateFlow<List<AirlineSuggestion>>(emptyList())
     val airlineSuggestions: StateFlow<List<AirlineSuggestion>> = _airlineSuggestions.asStateFlow()
 
-    private val _depTzSuggestions = MutableStateFlow<List<String>>(emptyList())
-    val depTzSuggestions: StateFlow<List<String>> = _depTzSuggestions.asStateFlow()
-
-    private val _arrTzSuggestions = MutableStateFlow<List<String>>(emptyList())
-    val arrTzSuggestions: StateFlow<List<String>> = _arrTzSuggestions.asStateFlow()
-
     // Usage counts from existing flights (computed once)
     private var airlineUsage: Map<String, Int> = emptyMap()
-    private var timezoneUsage: Map<String, Int> = emptyMap()
 
     init {
         viewModelScope.launch {
             repository.getAllFlights().first().let { flights ->
-                airlineUsage  = flights.groupingBy { it.airline }.eachCount()
-                timezoneUsage = buildMap {
-                    flights.forEach { f ->
-                        if (f.departureTimezone.isNotBlank())
-                            merge(f.departureTimezone, 1, Int::plus)
-                        if (f.arrivalTimezone.isNotBlank())
-                            merge(f.arrivalTimezone, 1, Int::plus)
-                    }
-                }
+                airlineUsage = flights.groupingBy { it.airline }.eachCount()
             }
         }
     }
@@ -104,35 +86,35 @@ class AddEditFlightViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             val flight = repository.getFlightById(id)
             if (flight != null) {
+                // Reconstruct local date/time using the stored timezone so the user
+                // sees the time as they originally entered it (local to the airport).
                 val depTz = flight.departureTimezone.toTzOrDefault()
                 val arrTz = flight.arrivalTimezone.toTzOrDefault()
                 val depLdt = flight.departureTime?.toLocalDateTime(depTz)
                 val arrLdt = flight.arrivalTime?.toLocalDateTime(arrTz)
                 _uiState.update { _ ->
                     AddEditUiState(
-                        isLoading         = false,
-                        airline           = flight.airline,
-                        flightNumber      = flight.flightNumber,
-                        departureAirport  = flight.departureAirport,
-                        arrivalAirport    = flight.arrivalAirport,
-                        departureDate     = depLdt?.formatDate() ?: "",
-                        departureTime     = depLdt?.formatTime() ?: "",
-                        departureTimezone = flight.departureTimezone,
-                        arrivalDate       = arrLdt?.formatDate() ?: "",
-                        arrivalTime       = arrLdt?.formatTime() ?: "",
-                        arrivalTimezone   = flight.arrivalTimezone,
-                        recordLocator     = flight.recordLocator,
-                        ticketNumber      = flight.ticketNumber,
-                        seat              = flight.seat,
-                        boardingGroup     = flight.boardingGroup,
-                        seatClass         = flight.seatClass,
-                        planeModel        = flight.planeModel,
-                        registration      = flight.registration,
-                        mqm               = flight.mqm?.toString() ?: "",
-                        mqs               = flight.mqs?.toString() ?: "",
-                        mqd               = flight.mqd?.toString() ?: "",
-                        awardMiles        = flight.awardMiles?.toString() ?: "",
-                        notes             = flight.notes,
+                        isLoading        = false,
+                        airline          = flight.airline,
+                        flightNumber     = flight.flightNumber,
+                        departureAirport = flight.departureAirport,
+                        arrivalAirport   = flight.arrivalAirport,
+                        departureDate    = depLdt?.formatDate() ?: "",
+                        departureTime    = depLdt?.formatTime() ?: "",
+                        arrivalDate      = arrLdt?.formatDate() ?: "",
+                        arrivalTime      = arrLdt?.formatTime() ?: "",
+                        recordLocator    = flight.recordLocator,
+                        ticketNumber     = flight.ticketNumber,
+                        seat             = flight.seat,
+                        boardingGroup    = flight.boardingGroup,
+                        seatClass        = flight.seatClass,
+                        planeModel       = flight.planeModel,
+                        registration     = flight.registration,
+                        mqm              = flight.mqm?.toString() ?: "",
+                        mqs              = flight.mqs?.toString() ?: "",
+                        mqd              = flight.mqd?.toString() ?: "",
+                        awardMiles       = flight.awardMiles?.toString() ?: "",
+                        notes            = flight.notes,
                     )
                 }
             } else {
@@ -163,12 +145,12 @@ class AddEditFlightViewModel @Inject constructor(
     // ── Airline autocomplete ──────────────────────────────────────────────
 
     fun onAirlineChange(value: String) {
-        _uiState.update { it.copy(airline = value) }
+        _uiState.update { it.copy(airline = value, isDirty = true) }
         _airlineSuggestions.value = airlineSearch.search(value, airlineUsage)
     }
 
     fun onAirlineSuggestionSelected(iata: String, name: String) {
-        _uiState.update { it.copy(airline = "$iata - $name") }
+        _uiState.update { it.copy(airline = "$iata - $name", isDirty = true) }
         _airlineSuggestions.value = emptyList()
     }
 
@@ -177,58 +159,28 @@ class AddEditFlightViewModel @Inject constructor(
     // ── Airport autocomplete ──────────────────────────────────────────────
 
     fun onDepartureAirportChange(iata: String) {
-        val tz = if (_uiState.value.departureTimezone.isBlank())
-            airportTz.timezoneFor(iata) ?: _uiState.value.departureTimezone
-        else _uiState.value.departureTimezone
-        _uiState.update { it.copy(departureAirport = iata.uppercase(), departureTimezone = tz) }
+        _uiState.update { it.copy(departureAirport = iata.uppercase(), isDirty = true) }
         _depSuggestions.value = airportSearch.search(iata)
     }
 
     fun onDepartureSuggestionSelected(iata: String) {
-        val tz = airportTz.timezoneFor(iata) ?: _uiState.value.departureTimezone
-        _uiState.update { it.copy(departureAirport = iata, departureTimezone = tz) }
+        _uiState.update { it.copy(departureAirport = iata, isDirty = true) }
         _depSuggestions.value = emptyList()
     }
 
     fun onArrivalAirportChange(iata: String) {
-        val tz = if (_uiState.value.arrivalTimezone.isBlank())
-            airportTz.timezoneFor(iata) ?: _uiState.value.arrivalTimezone
-        else _uiState.value.arrivalTimezone
-        _uiState.update { it.copy(arrivalAirport = iata.uppercase(), arrivalTimezone = tz) }
+        _uiState.update { it.copy(arrivalAirport = iata.uppercase(), isDirty = true) }
         _arrSuggestions.value = airportSearch.search(iata)
     }
 
     fun onArrivalSuggestionSelected(iata: String) {
-        val tz = airportTz.timezoneFor(iata) ?: _uiState.value.arrivalTimezone
-        _uiState.update { it.copy(arrivalAirport = iata, arrivalTimezone = tz) }
+        _uiState.update { it.copy(arrivalAirport = iata, isDirty = true) }
         _arrSuggestions.value = emptyList()
-    }
-
-    // ── Timezone autocomplete ─────────────────────────────────────────────
-
-    fun onDepTimezoneChange(value: String) {
-        _uiState.update { it.copy(departureTimezone = value) }
-        _depTzSuggestions.value = timezoneSearch.search(value, timezoneUsage)
-    }
-
-    fun onDepTimezoneSuggestionSelected(tz: String) {
-        _uiState.update { it.copy(departureTimezone = tz) }
-        _depTzSuggestions.value = emptyList()
-    }
-
-    fun onArrTimezoneChange(value: String) {
-        _uiState.update { it.copy(arrivalTimezone = value) }
-        _arrTzSuggestions.value = timezoneSearch.search(value, timezoneUsage)
-    }
-
-    fun onArrTimezoneSuggestionSelected(tz: String) {
-        _uiState.update { it.copy(arrivalTimezone = tz) }
-        _arrTzSuggestions.value = emptyList()
     }
 
     // ── Flight lookup (AirLabs) ───────────────────────────────────────────
 
-    /** Called when airline + flight number + (optionally) date are set; fetches schedule data from AirLabs. */
+    /** Called when airline + flight number + departure date are set. */
     fun lookupFlight() {
         val s = _uiState.value
         val flightIata = buildFlightIata(s.airline, s.flightNumber)
@@ -248,19 +200,15 @@ class AddEditFlightViewModel @Inject constructor(
                 flightLookup.lookup(flightIata, apiKey, s.departureDate)
             }
             if (result != null) {
-                val depTz = airportTz.timezoneFor(result.departureAirport) ?: s.departureTimezone
-                val arrTz = airportTz.timezoneFor(result.arrivalAirport)   ?: s.arrivalTimezone
                 _uiState.update { it.copy(
                     isLookingUpFlight = false,
+                    isDirty           = true,
                     departureAirport  = result.departureAirport,
                     arrivalAirport    = result.arrivalAirport,
-                    // Only overwrite date/time if the API returned them (non-blank)
                     departureDate     = result.departureDate.ifBlank { it.departureDate },
                     departureTime     = result.departureTime.ifBlank { it.departureTime },
-                    departureTimezone = depTz,
                     arrivalDate       = result.arrivalDate.ifBlank { it.arrivalDate },
                     arrivalTime       = result.arrivalTime.ifBlank { it.arrivalTime },
-                    arrivalTimezone   = arrTz,
                     registration      = result.registration.ifBlank { it.registration },
                     planeModel        = result.aircraftModel.ifBlank { it.planeModel },
                 ) }
@@ -268,7 +216,7 @@ class AddEditFlightViewModel @Inject constructor(
                 val hint = if (s.departureDate.isBlank())
                     " Tip: set the departure date first for a better match."
                 else
-                    " The flight may not be in AirLabs\u2019 schedule window (live/next ~10 hours only)."
+                    " The flight may not be in AirLabs' schedule window (live/next ~10 hours only)."
                 _uiState.update { it.copy(
                     isLookingUpFlight = false,
                     lookupError = "Flight $flightIata not found.$hint",
@@ -284,39 +232,49 @@ class AddEditFlightViewModel @Inject constructor(
     fun save(existingId: Long?) {
         viewModelScope.launch {
             val s = _uiState.value
+            val depAirport = s.departureAirport.trim().uppercase()
+            val arrAirport = s.arrivalAirport.trim().uppercase()
+
+            // Timezone is always derived from the airport code — never user input.
+            // Fall back to UTC if the airport isn't in our asset.
+            val depTzId = airportTz.timezoneFor(depAirport) ?: "UTC"
+            val arrTzId = airportTz.timezoneFor(arrAirport) ?: "UTC"
+
             fun parseInstant(date: String, time: String, tzId: String): Instant? {
                 if (date.isBlank()) return null
                 return try {
-                    val tz = tzId.toTzOrDefault()
+                    val tz = TimeZone.of(tzId)
                     val parts = date.split("-").map { it.toInt() }
-                    val timeParts = if (time.isBlank()) listOf(0, 0) else time.split(":").map { it.toInt() }
-                    LocalDateTime(parts[0], parts[1], parts[2], timeParts[0], timeParts.getOrElse(1) { 0 })
+                    val timeParts = if (time.isBlank()) listOf(0, 0)
+                                    else time.split(":").map { it.toInt() }
+                    LocalDateTime(parts[0], parts[1], parts[2],
+                                  timeParts[0], timeParts.getOrElse(1) { 0 })
                         .toInstant(tz)
                 } catch (_: Exception) { null }
             }
 
             val flight = Flight(
-                id                = existingId ?: 0,
-                airline           = s.airline.trim(),
-                flightNumber      = s.flightNumber.trim(),
-                departureAirport  = s.departureAirport.trim().uppercase(),
-                arrivalAirport    = s.arrivalAirport.trim().uppercase(),
-                departureTime     = parseInstant(s.departureDate, s.departureTime, s.departureTimezone),
-                arrivalTime       = parseInstant(s.arrivalDate, s.arrivalTime, s.arrivalTimezone),
-                departureTimezone = s.departureTimezone,
-                arrivalTimezone   = s.arrivalTimezone,
-                recordLocator     = s.recordLocator.trim(),
-                ticketNumber      = s.ticketNumber.trim(),
-                seat              = s.seat.trim(),
-                boardingGroup     = s.boardingGroup.trim(),
-                seatClass         = s.seatClass.trim(),
-                planeModel        = s.planeModel.trim(),
-                registration      = s.registration.trim().uppercase(),
-                mqm               = s.mqm.toIntOrNull(),
-                mqs               = s.mqs.toIntOrNull(),
-                mqd               = s.mqd.toIntOrNull(),
-                awardMiles        = s.awardMiles.toIntOrNull(),
-                notes             = s.notes.trim(),
+                id               = existingId ?: 0,
+                airline          = s.airline.trim(),
+                flightNumber     = s.flightNumber.trim(),
+                departureAirport = depAirport,
+                arrivalAirport   = arrAirport,
+                departureTime    = parseInstant(s.departureDate, s.departureTime, depTzId),
+                arrivalTime      = parseInstant(s.arrivalDate,   s.arrivalTime,   arrTzId),
+                departureTimezone = depTzId,
+                arrivalTimezone   = arrTzId,
+                recordLocator    = s.recordLocator.trim(),
+                ticketNumber     = s.ticketNumber.trim(),
+                seat             = s.seat.trim(),
+                boardingGroup    = s.boardingGroup.trim(),
+                seatClass        = s.seatClass.trim(),
+                planeModel       = s.planeModel.trim(),
+                registration     = s.registration.trim().uppercase(),
+                mqm              = s.mqm.toIntOrNull(),
+                mqs              = s.mqs.toIntOrNull(),
+                mqd              = s.mqd.toIntOrNull(),
+                awardMiles       = s.awardMiles.toIntOrNull(),
+                notes            = s.notes.trim(),
             )
             if (existingId != null) repository.updateFlight(flight)
             else repository.saveFlight(flight)
@@ -326,10 +284,9 @@ class AddEditFlightViewModel @Inject constructor(
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    /** Extracts the IATA flight code from airline + flight number, e.g. "DL" + "123" → "DL123". */
+    /** Extracts the IATA flight code, e.g. "DL" + "123" → "DL123". */
     private fun buildFlightIata(airline: String, flightNumber: String): String {
         val num = flightNumber.trim().trimStart('0').ifBlank { return "" }
-        // Airline field may be "DL - Delta Air Lines" or just "DL"
         val iata = airline.trim().take(2).uppercase()
         return if (iata.length == 2) "$iata$num" else ""
     }

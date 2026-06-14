@@ -35,12 +35,10 @@ fun AddEditFlightScreen(
 ) {
     LaunchedEffect(flightId) { if (flightId != null) viewModel.loadFlight(flightId) }
 
-    val uiState          by viewModel.uiState.collectAsStateWithLifecycle()
-    val depSuggestions   by viewModel.depSuggestions.collectAsStateWithLifecycle()
-    val arrSuggestions   by viewModel.arrSuggestions.collectAsStateWithLifecycle()
+    val uiState            by viewModel.uiState.collectAsStateWithLifecycle()
+    val depSuggestions     by viewModel.depSuggestions.collectAsStateWithLifecycle()
+    val arrSuggestions     by viewModel.arrSuggestions.collectAsStateWithLifecycle()
     val airlineSuggestions by viewModel.airlineSuggestions.collectAsStateWithLifecycle()
-    val depTzSuggestions by viewModel.depTzSuggestions.collectAsStateWithLifecycle()
-    val arrTzSuggestions by viewModel.arrTzSuggestions.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState.isSaved) { if (uiState.isSaved) onBack() }
 
@@ -169,24 +167,16 @@ fun AddEditFlightScreen(
 
                 DateTimePickerField(
                     label = "Departure",
-                    date = uiState.departureDate,
-                    time = uiState.departureTime,
-                    timezone = uiState.departureTimezone,
-                    timezoneSuggestions = depTzSuggestions,
+                    date  = uiState.departureDate,
+                    time  = uiState.departureTime,
                     onDateTimeChange = { d, t -> viewModel.update { copy(departureDate = d, departureTime = t) } },
-                    onTimezoneChange = { viewModel.onDepTimezoneChange(it) },
-                    onTimezoneSuggestionSelected = { viewModel.onDepTimezoneSuggestionSelected(it) },
                 )
 
                 DateTimePickerField(
                     label = "Arrival",
-                    date = uiState.arrivalDate,
-                    time = uiState.arrivalTime,
-                    timezone = uiState.arrivalTimezone,
-                    timezoneSuggestions = arrTzSuggestions,
+                    date  = uiState.arrivalDate,
+                    time  = uiState.arrivalTime,
                     onDateTimeChange = { d, t -> viewModel.update { copy(arrivalDate = d, arrivalTime = t) } },
-                    onTimezoneChange = { viewModel.onArrTimezoneChange(it) },
-                    onTimezoneSuggestionSelected = { viewModel.onArrTimezoneSuggestionSelected(it) },
                 )
             }
 
@@ -378,11 +368,7 @@ private fun DateTimePickerField(
     label: String,
     date: String,
     time: String,
-    timezone: String,
-    timezoneSuggestions: List<String>,
     onDateTimeChange: (date: String, time: String) -> Unit,
-    onTimezoneChange: (String) -> Unit,
-    onTimezoneSuggestionSelected: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val cal = remember(date, time) {
@@ -402,32 +388,20 @@ private fun DateTimePickerField(
         else           -> "$date  $time"
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        OutlinedButton(
-            onClick = {
-                DatePickerDialog(context, { _, year, month, day ->
-                    val dateStr = "%04d-%02d-%02d".format(year, month + 1, day)
-                    TimePickerDialog(context, { _, hour, minute ->
-                        onDateTimeChange(dateStr, "%02d:%02d".format(hour, minute))
-                    }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
-                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(displayText, maxLines = 1)
-        }
-
-        // Timezone autocomplete
-        AutocompleteField(
-            label = "$label timezone (e.g. America/Chicago)",
-            value = timezone,
-            suggestions = timezoneSuggestions,
-            onValueChange = onTimezoneChange,
-            onSuggestionSelected = { idx -> onTimezoneSuggestionSelected(timezoneSuggestions[idx]) },
-            onDismiss = { onTimezoneSuggestionSelected(timezone) },
-        )
+    OutlinedButton(
+        onClick = {
+            DatePickerDialog(context, { _, year, month, day ->
+                val dateStr = "%04d-%02d-%02d".format(year, month + 1, day)
+                TimePickerDialog(context, { _, hour, minute ->
+                    onDateTimeChange(dateStr, "%02d:%02d".format(hour, minute))
+                }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
+            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(displayText, maxLines = 1)
     }
 }
 
