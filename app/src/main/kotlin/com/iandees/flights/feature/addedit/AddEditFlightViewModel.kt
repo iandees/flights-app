@@ -16,6 +16,8 @@ import javax.inject.Inject
 data class AddEditUiState(
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
+    val isDirty: Boolean = false,
+    val showDiscardDialog: Boolean = false,
     val error: String? = null,
     val isLookingUpFlight: Boolean = false,
     val lookupError: String? = null,
@@ -139,9 +141,24 @@ class AddEditFlightViewModel @Inject constructor(
         }
     }
 
+    /** Called by every field change; marks the form dirty so back-navigation confirms. */
     fun update(block: AddEditUiState.() -> AddEditUiState) {
-        _uiState.update { it.block() }
+        _uiState.update { it.block().copy(isDirty = true) }
     }
+
+    /** User tapped back (button or gesture) — show confirm dialog if dirty, else allow. */
+    fun onBackPressed(): Boolean {
+        return if (_uiState.value.isDirty && !_uiState.value.isSaved) {
+            _uiState.update { it.copy(showDiscardDialog = true) }
+            true  // consumed — do not navigate back yet
+        } else {
+            false // not dirty — let caller navigate back
+        }
+    }
+
+    fun dismissDiscardDialog() { _uiState.update { it.copy(showDiscardDialog = false) } }
+
+    fun confirmDiscard() { _uiState.update { it.copy(showDiscardDialog = false, isDirty = false, isSaved = true) } }
 
     // ── Airline autocomplete ──────────────────────────────────────────────
 

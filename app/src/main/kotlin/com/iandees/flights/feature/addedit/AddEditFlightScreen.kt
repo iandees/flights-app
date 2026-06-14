@@ -2,6 +2,7 @@ package com.iandees.flights.feature.addedit
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -43,6 +44,26 @@ fun AddEditFlightScreen(
 
     LaunchedEffect(uiState.isSaved) { if (uiState.isSaved) onBack() }
 
+    // Intercept system back gesture/button
+    BackHandler(enabled = uiState.isDirty && !uiState.isSaved) {
+        viewModel.onBackPressed()
+    }
+
+    // Discard-changes confirmation dialog
+    if (uiState.showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDiscardDialog,
+            title = { Text("Discard changes?") },
+            text  = { Text("You have unsaved changes. Leave without saving?") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmDiscard() }) { Text("Discard") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissDiscardDialog) { Text("Keep editing") }
+            },
+        )
+    }
+
     uiState.lookupError?.let { msg ->
         AlertDialog(
             onDismissRequest = viewModel::dismissLookupError,
@@ -57,7 +78,9 @@ fun AddEditFlightScreen(
             TopAppBar(
                 title = { Text(if (flightId == null) "Add Flight" else "Edit Flight") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                    IconButton(onClick = {
+                        if (!viewModel.onBackPressed()) onBack()
+                    }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.save(flightId) }) {
