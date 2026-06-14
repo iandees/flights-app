@@ -37,9 +37,6 @@ class FlightListViewModel @Inject constructor(
             initialValue = FlightListUiState(),
         )
 
-    // Expose raw query directly so the text field value is always in sync.
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
     }
