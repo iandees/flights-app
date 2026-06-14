@@ -23,7 +23,7 @@ class FlightListViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
     val uiState: StateFlow<FlightListUiState> = _searchQuery
         .debounce(200)
         .flatMapLatest { query ->

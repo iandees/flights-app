@@ -19,6 +19,7 @@ import com.iandees.flights.core.model.Flight
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
+@Suppress("DEPRECATION") // hiltViewModel() moved package not yet published in hilt-navigation-compose 1.3
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlightListScreen(
