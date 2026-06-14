@@ -40,6 +40,7 @@ fun MapScreen(viewModel: MapViewModel = hiltViewModel()) {
             } else {
                 FlightMapView(
                     flights = uiState.flights,
+                    coords  = uiState.coords,
                     modifier = Modifier.fillMaxSize(),
                 )
                 Surface(
@@ -59,12 +60,15 @@ fun MapScreen(viewModel: MapViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun FlightMapView(flights: List<Flight>, modifier: Modifier = Modifier) {
-    // Recompute GeoJSON whenever flights change
-    val featureCollection = remember(flights) {
+private fun FlightMapView(
+    flights: List<Flight>,
+    coords: Map<String, Pair<Double, Double>>,
+    modifier: Modifier = Modifier,
+) {
+    val featureCollection = remember(flights, coords) {
         val features = flights.mapNotNull { flight ->
-            val from = AIRPORT_COORDS[flight.departureAirport] ?: return@mapNotNull null
-            val to   = AIRPORT_COORDS[flight.arrivalAirport]   ?: return@mapNotNull null
+            val from = coords[flight.departureAirport] ?: return@mapNotNull null
+            val to   = coords[flight.arrivalAirport]   ?: return@mapNotNull null
             val pts  = greatCirclePoints(from.first, from.second, to.first, to.second)
                 .map { (lat, lon) -> Point.fromLngLat(lon, lat) }
             Feature.fromGeometry(LineString.fromLngLats(pts))
