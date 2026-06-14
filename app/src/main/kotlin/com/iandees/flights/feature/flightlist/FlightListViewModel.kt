@@ -65,18 +65,19 @@ class FlightListViewModel @Inject constructor(
         var todayInserted = false
         var todayIndex = 0
 
+        // List is DESC (newest first). The divider goes between the last future/today
+        // flight and the first past flight — i.e. after the final flight where depDate >= today.
         flights.forEach { flight ->
-            val depDate = flight.departureTime
-                ?.toLocalDateTime(tz)?.date
+            val depDate = flight.departureTime?.toLocalDateTime(tz)?.date
 
-            // Insert "Today" divider once, just before the first future/today flight
-            if (insertTodayDivider && !todayInserted && depDate != null && depDate >= today) {
+            // When we first see a flight that is strictly in the past, insert the divider.
+            if (insertTodayDivider && !todayInserted && depDate != null && depDate < today) {
                 todayIndex = items.size
                 items.add(FlightListItem.TodayDivider)
                 todayInserted = true
             }
 
-            // Month header
+            // Month header — changes when the month label changes while iterating
             val monthLabel = depDate?.let {
                 "${it.month.name.lowercase().replaceFirstChar { c -> c.uppercase() }} ${it.year}"
             }
@@ -88,7 +89,7 @@ class FlightListViewModel @Inject constructor(
             items.add(FlightListItem.FlightRow(flight))
         }
 
-        // If all flights are in the past, append the divider at the end
+        // If all flights are today or in the future, append the divider at the end.
         if (insertTodayDivider && !todayInserted) {
             todayIndex = items.size
             items.add(FlightListItem.TodayDivider)
