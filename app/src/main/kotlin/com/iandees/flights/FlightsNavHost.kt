@@ -21,6 +21,7 @@ import com.iandees.flights.feature.addedit.AddEditFlightScreen
 import com.iandees.flights.feature.map.MapScreen
 import com.iandees.flights.feature.stats.StatsScreen
 import com.iandees.flights.feature.importcsv.ImportCsvScreen
+import com.iandees.flights.feature.settings.SettingsScreen
 
 sealed class Screen(val route: String) {
     // Bottom nav destinations
@@ -28,7 +29,8 @@ sealed class Screen(val route: String) {
     object Map        : Screen("map")
     object Stats      : Screen("stats")
 
-    // Detail / edit (not in bottom nav)
+    // Detail / edit / settings (not in bottom nav)
+    object Settings     : Screen("settings")
     object FlightDetail : Screen("flight_detail/{flightId}") {
         fun createRoute(flightId: Long) = "flight_detail/$flightId"
     }
@@ -94,7 +96,11 @@ fun FlightsNavHost() {
                     onFlightClick  = { id -> navController.navigate(Screen.FlightDetail.createRoute(id)) },
                     onAddFlight    = { navController.navigate(Screen.AddFlight.route) },
                     onImportCsv    = { navController.navigate(Screen.ImportCsv.route) },
+                    onSettings     = { navController.navigate(Screen.Settings.route) },
                 )
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Map.route) {
                 MapScreen()

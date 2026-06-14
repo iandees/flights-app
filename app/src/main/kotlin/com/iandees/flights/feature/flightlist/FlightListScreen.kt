@@ -25,6 +25,7 @@ fun FlightListScreen(
     onFlightClick: (Long) -> Unit,
     onAddFlight: () -> Unit,
     onImportCsv: () -> Unit,
+    onSettings: () -> Unit,
     viewModel: FlightListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -43,6 +44,11 @@ fun FlightListScreen(
                             text = { Text("Import CSV") },
                             leadingIcon = { Icon(Icons.Default.FileUpload, null) },
                             onClick = { showMenu = false; onImportCsv() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Settings") },
+                            leadingIcon = { Icon(Icons.Default.Settings, null) },
+                            onClick = { showMenu = false; onSettings() },
                         )
                     }
                 },
