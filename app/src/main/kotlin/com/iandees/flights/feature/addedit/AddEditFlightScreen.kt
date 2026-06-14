@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.LocalTextStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -97,7 +99,7 @@ fun AddEditFlightScreen(
                         label = "Flight No. (e.g. 123)",
                         value = uiState.flightNumber,
                         modifier = Modifier.weight(1f),
-                        caps = KeyboardCapitalization.Characters,
+                        keyboardType = KeyboardType.Number,
                     ) { viewModel.update { copy(flightNumber = it) } }
 
                     if (uiState.isLookingUpFlight) {
@@ -157,13 +159,19 @@ fun AddEditFlightScreen(
 
             // ── Booking ────────────────────────────────────────────────────
             FormSection("Booking") {
-                // Record locator: uppercase letters + digits
-                FormField(
-                    label = "Record Locator (PNR)",
+                // Record locator: monospace font, uppercase letters + digits
+                OutlinedTextField(
                     value = uiState.recordLocator,
-                    caps = KeyboardCapitalization.Characters,
-                    keyboardType = KeyboardType.Ascii,
-                ) { viewModel.update { copy(recordLocator = it.uppercase()) } }
+                    onValueChange = { viewModel.update { copy(recordLocator = it.uppercase()) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Record Locator (PNR)") },
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        keyboardType = KeyboardType.Ascii,
+                    ),
+                )
 
                 FormField("Ticket Number", uiState.ticketNumber, keyboardType = KeyboardType.Number) {
                     viewModel.update { copy(ticketNumber = it) }
@@ -182,13 +190,18 @@ fun AddEditFlightScreen(
                         keyboardType = KeyboardType.Ascii,
                     ) { viewModel.update { copy(seat = it.uppercase()) } }
 
-                    FormField("Boarding Group", uiState.boardingGroup, modifier = Modifier.weight(1f)) {
-                        viewModel.update { copy(boardingGroup = it) }
-                    }
+                    FormField(
+                        label = "Boarding Group",
+                        value = uiState.boardingGroup,
+                        modifier = Modifier.weight(1f),
+                        caps = KeyboardCapitalization.Characters,
+                    ) { viewModel.update { copy(boardingGroup = it.uppercase()) } }
                 }
-                FormField("Class (Y / W / J / F)", uiState.seatClass, caps = KeyboardCapitalization.Characters) {
-                    viewModel.update { copy(seatClass = it) }
-                }
+                FormField(
+                    label = "Class (Y / W / J / F)",
+                    value = uiState.seatClass,
+                    caps = KeyboardCapitalization.Characters,
+                ) { viewModel.update { copy(seatClass = it.uppercase()) } }
             }
 
             // ── Aircraft ───────────────────────────────────────────────────

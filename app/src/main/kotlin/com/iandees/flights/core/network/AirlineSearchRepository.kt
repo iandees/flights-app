@@ -35,15 +35,16 @@ class AirlineSearchRepository @Inject constructor(
 
     /**
      * Returns up to [limit] suggestions for [query].
-     * Results are sorted: exact IATA-code match first, then prefix matches, then name matches.
-     * Within each group, airlines that appear more often in the DB float to the top via [usageCounts].
+     * The first 11 entries in the file are the preferred US majors — they always
+     * rank above everything else when there is no better match from [usageCounts].
      */
     fun search(query: String, usageCounts: Map<String, Int>, limit: Int = 8): List<AirlineSuggestion> {
+        // Give the top-11 US majors a synthetic usage boost so they float up
+        val preferredBoost = airlines.take(11).associate { it.iata to 10_000 }
+        val combined = { iata: String -> (usageCounts[iata] ?: 0) + (preferredBoost[iata] ?: 0) }
+
         if (query.isBlank()) {
-            // No query — return most-used airlines
-            return airlines
-                .sortedByDescending { usageCounts[it.iata] ?: 0 }
-                .take(limit)
+            return airlines.sortedByDescending { combined(it.iata) }.take(limit)
         }
         val q = query.uppercase().trim()
         val exact   = airlines.filter { it.iata == q }
@@ -52,7 +53,7 @@ class AirlineSearchRepository @Inject constructor(
             !it.iata.startsWith(q) && it.name.contains(query, ignoreCase = true)
         }
         return (exact + prefix + nameHit)
-            .sortedByDescending { usageCounts[it.iata] ?: 0 }
+            .sortedByDescending { combined(it.iata) }
             .take(limit)
     }
 }

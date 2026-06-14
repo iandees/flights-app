@@ -1,3 +1,14 @@
+DL^Delta Air Lines
+AA^American Airlines
+UA^United Airlines
+AS^Alaska Airlines
+B6^JetBlue Airways
+WN^Southwest Airlines
+NK^Spirit Airlines
+F9^Frontier Airlines
+SY^Sun Country Airlines
+HA^Hawaiian Airlines
+G4^Allegiant Air
 01^Bobb Air Freight
 0B^Blue Air
 0D^Darwin Airline
@@ -186,7 +197,6 @@ A5^Airlinair
 A6^Air Alps Aviation (A6)
 A7^Air Plus Comet
 A9^Georgian Airways
-AA^American Airlines
 AB^Air Berlin
 AC^Air Canada
 AD^Azul
@@ -204,7 +214,6 @@ AO^Avianova (Russia)
 AP^Air One
 AQ^Aloha Airlines
 AR^Aerolineas Argentinas
-AS^Alaska Airlines
 AT^Royal Air Maroc
 AU^Austral Lineas Aereas
 AV^Avianca - Aerovias Nacionales de Colombia
@@ -218,7 +227,6 @@ B2^Belavia Belarusian Airlines
 B3^Bellview Airlines
 B4^Flyglobespan
 B5^Flightline
-B6^JetBlue Airways
 B7^Uni Air
 B8^Eritrean Airlines
 B9^Air Bangladesh
@@ -300,7 +308,6 @@ DG^South East Asian Airlines
 DH^Dennis Sky
 DI^dba
 DK^Eastland Air
-DL^Delta Air Lines
 DM^Maersk
 DN^Senegal Airlines
 DO^Dominicana de Aviaci
@@ -349,7 +356,6 @@ F1^Fly Brasil
 F5^Fly One
 F7^Flybaboo
 F8^Air2there
-F9^Frontier Airlines
 FA^Epic Holiday
 FB^Bulgaria Air
 FC^Finncomm Airlines
@@ -380,7 +386,6 @@ G1^Indya Airline Group
 G3^City Connexion Airlines
 G3^Gol Transportes Aéreos
 G3^Sky Express
-G4^Allegiant Air
 G5^Huaxia
 G6^Air Volga
 G7^GoJet Airlines
@@ -416,7 +421,6 @@ H6^Hageland Aviation Services
 H7^Eagle Air
 H8^Dalavia
 H9^PEGASUS AIRLINES-
-HA^Hawaiian Airlines
 HC^Himalayan Airlines
 HD^Hokkaido International Airlines
 HE^Luftfahrtgesellschaft Walter
@@ -615,7 +619,6 @@ NG^Lauda Air
 NH^All Nippon Airways
 NI^Portugalia
 NJ^Nordic Global Airlines
-NK^Spirit Airlines
 NL^Shaheen Air International
 NM^Air Madrid
 NN^VIM Airlines
@@ -789,7 +792,6 @@ SU^Aeroflot Russian Airlines
 SV^Saudi Arabian Airlines
 SW^Air Namibia
 SX^SkyWork Airlines 
-SY^Sun Country Airlines
 SZ^Salzburg arrows
 T0^TACA Peru
 T2^Thai Air Cargo
@@ -834,7 +836,6 @@ U6^Ural Airlines
 U7^Northern Dene Airways
 U8^Armavia
 U9^Tatarstan Airlines
-UA^United Airlines
 UB^Myanma Airways
 UD^Hex'Air
 UE^Nasair
@@ -911,7 +912,6 @@ WH^China Northwest Airlines (WH)
 WJ^WebJet Linhas A
 WK^Edelweiss Air
 WM^Windward Islands Airways
-WN^Southwest Airlines
 WO^World Airways
 WP^Island Air (WP)
 WQ^PanAm World Airways
