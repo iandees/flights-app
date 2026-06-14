@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +24,7 @@ import com.iandees.flights.core.network.AirlineSuggestion
 import com.iandees.flights.core.network.AirportSuggestion
 import java.util.Calendar
 
+@Suppress("DEPRECATION") // hiltViewModel() moved package not yet published in hilt-navigation-compose 1.3
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditFlightScreen(
@@ -55,7 +57,7 @@ fun AddEditFlightScreen(
             TopAppBar(
                 title = { Text(if (flightId == null) "Add Flight" else "Edit Flight") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.save(flightId) }) {
@@ -285,7 +287,7 @@ private fun AutocompleteField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
             label = { Text(label) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(capitalization = caps, keyboardType = keyboardType),
@@ -322,7 +324,7 @@ private fun AirportAutocompleteField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
             label = { Text(label) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
