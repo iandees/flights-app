@@ -179,7 +179,7 @@ fun AddEditFlightScreen(
                     textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Characters,
-                        keyboardType = KeyboardType.Ascii,
+                        keyboardType = KeyboardType.Text,
                     ),
                 )
 
@@ -197,7 +197,6 @@ fun AddEditFlightScreen(
                         value = uiState.seat,
                         modifier = Modifier.weight(1f),
                         caps = KeyboardCapitalization.Characters,
-                        keyboardType = KeyboardType.Ascii,
                     ) { viewModel.update { copy(seat = it.uppercase()) } }
 
                     FormField(
@@ -224,7 +223,6 @@ fun AddEditFlightScreen(
                     label = "Registration / N-code (e.g. N12345)",
                     value = uiState.registration,
                     caps = KeyboardCapitalization.Characters,
-                    keyboardType = KeyboardType.Ascii,
                 ) { viewModel.update { copy(registration = it.uppercase()) } }
             }
 
