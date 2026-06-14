@@ -204,8 +204,8 @@ fun AddEditFlightScreen(
                         label = "Boarding Group",
                         value = uiState.boardingGroup,
                         modifier = Modifier.weight(1f),
-                        caps = KeyboardCapitalization.Characters,
-                    ) { viewModel.update { copy(boardingGroup = it.uppercase()) } }
+                        keyboardType = KeyboardType.Number,
+                    ) { viewModel.update { copy(boardingGroup = it) } }
                 }
                 FormField(
                     label = "Class (Y / W / J / F)",
