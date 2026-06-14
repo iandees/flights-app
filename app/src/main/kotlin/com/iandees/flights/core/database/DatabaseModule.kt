@@ -3,6 +3,7 @@ package com.iandees.flights.core.database
 import android.content.Context
 import androidx.room.Room
 import com.iandees.flights.core.database.dao.FlightDao
+import com.iandees.flights.core.database.MIGRATION_1_2
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,7 +19,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): FlightsDatabase =
         Room.databaseBuilder(context, FlightsDatabase::class.java, FlightsDatabase.DATABASE_NAME)
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_1_2)
             .build()
 
     @Provides

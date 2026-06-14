@@ -49,6 +49,7 @@ android {
 // Also disable Hilt's aggregating root processor so it sees Room-generated types
 ksp {
     arg("room.generateKotlin", "true")
+    arg("room.schemaLocation", "$projectDir/schemas")
     arg("dagger.hilt.internal.useAggregatingRootProcessor", "false")
 }
 

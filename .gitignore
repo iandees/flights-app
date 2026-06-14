@@ -24,7 +24,7 @@ local.properties
 *.keystore
 
 # Room schema exports (add back if you want to track DB migrations)
-app/schemas/
+# app/schemas/
 
 # Heap dumps from OOM crashes
 *.hprof
