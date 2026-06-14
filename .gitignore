@@ -2,29 +2,48 @@
 .gradle/
 build/
 **/build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
 
 # Android Studio / IntelliJ
 .idea/
 *.iml
 *.ipr
 *.iws
+*.eml
+captures/
+.externalNativeBuild/
+.cxx/
 
-# Local config (contains SDK path, do not commit)
+# Local config — contains SDK path, signing configs, etc. Never commit.
 local.properties
 
-# Keystore files
+# Keystore / signing
 *.jks
 *.keystore
 
-# Room schema exports (optional — remove if you want to track migrations)
+# Room schema exports (add back if you want to track DB migrations)
 app/schemas/
+
+# Heap dumps from OOM crashes
+*.hprof
 
 # macOS
 .DS_Store
 **/.DS_Store
+.AppleDouble
+.LSOverride
 
-# Kotlin / Java
+# Kotlin / Java compiled output
 *.class
+out/
 
 # Logs
 *.log
+
+# Navigation safe-args generated sources (regenerated on build)
+app/src/main/java/
+
+# Profiling
+*.trace
