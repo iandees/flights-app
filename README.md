@@ -8,12 +8,13 @@ A personal Android app for tracking flights you've taken. Log every segment, vie
 
 | Screen | Description |
 |---|---|
-| **Flight List** | Scrollable list of all flights, sorted by departure date. Searchable by airline, flight number, airport, aircraft, or notes. Swipe/tap to delete. |
+| **Flight List** | Flights sorted newest-first with month headers (e.g. "June 2026") and a "── Today ──" divider separating past from future flights. Auto-scrolls to Today on load. Searchable by airline, flight number, airport, aircraft, or notes. Tap to delete (with confirmation). |
 | **Flight Detail** | Full read-only view of a single flight. Edit or delete from the top bar. |
-| **Add / Edit Flight** | Full form with autocomplete for airline, airport codes, and timezone. Combined date+time picker (tap once → date dialog → time dialog). Auto-fill from AirLabs API when airline + flight number are set. |
-| **Map** | World map (MapLibre) with great-circle arcs connecting departure and arrival airports for every flight. |
+| **Add / Edit Flight** | Full form with autocomplete for airline (top 11 US carriers pinned first), airport codes, and timezone. Combined date+time picker. Auto-fill from AirLabs API (route, times, registration, aircraft model) once airline + flight number + departure date are set. Confirms before discarding unsaved changes. |
+| **Map** | World map (MapLibre) with great-circle arcs for every flight. Covers 8,656 airports. |
 | **Stats** | Segments by year (bar chart), by airline, by aircraft type, by seat class; top departure airports; top routes. |
 | **Import CSV** | Import from a Google Sheets CSV export. File picker → parse preview → confirm. |
+| **Settings** | Enter and persist an AirLabs API key for flight data lookup. Reachable via ⋮ menu → Settings. |
 
 ---
 
@@ -50,10 +51,10 @@ A personal Android app for tracking flights you've taken. Log every segment, vie
 | `arrivalTime` | `Instant?` | Stored as epoch-ms; converted using `arrivalTimezone` |
 | `departureTimezone` | `String` | IANA ID, e.g. `"America/New_York"` |
 | `arrivalTimezone` | `String` | IANA ID, e.g. `"America/Los_Angeles"` |
-| `recordLocator` | `String` | PNR / booking code |
+| `recordLocator` | `String` | PNR / booking code (displayed monospace) |
 | `ticketNumber` | `String` | |
 | `seat` | `String` | e.g. `"12A"` |
-| `boardingGroup` | `String` | |
+| `boardingGroup` | `String` | Numeric |
 | `seatClass` | `String` | `Y`, `W`, `J`, `F`, etc. |
 | `planeModel` | `String` | e.g. `"Boeing 737-800"` |
 | `registration` | `String` | Aircraft tail number / N-code, e.g. `"N12345"` |
@@ -95,12 +96,28 @@ Accepted date formats: `M/d/yyyy H:mm`, `M/d/yyyy`, `yyyy-MM-dd HH:mm:ss`, `yyyy
 
 ## AirLabs Flight Data API (optional)
 
-When adding/editing a flight, tapping the 🔍 button next to the flight number fetches schedule data from the [AirLabs API](https://airlabs.co/) and auto-fills:
+When adding/editing a flight, set the airline, flight number, and departure date, then tap the 🔍 button to auto-fill:
 - From / To airports
 - Departure and arrival date + time (local timezone)
 - Aircraft registration and model
 
-**Setup:** Store your AirLabs API key in the app's Settings screen (not yet built — the key is persisted via `AppSettingsRepository` in DataStore under the key `airlabs_api_key`). The free tier gives enough requests for personal use.
+Two parallel API calls are made: `/v9/schedules` (route + times, filtered to the selected date) and `/v9/flight` (registration + model from the live/nearest instance).
+
+**Limitation:** AirLabs is a live/near-real-time API — it only has data within roughly the next 10 hours. Useful for logging flights today or tomorrow; historical flights will return "not found".
+
+**Setup:** ⋮ menu → Settings → paste your AirLabs API key. Get a free key at [airlabs.co](https://airlabs.co) (no credit card required).
+
+---
+
+## Keyboard behaviour
+
+| Field | Keyboard |
+|---|---|
+| Record locator, Seat, Registration | `KeyboardType.Password` (no masking) — forces QWERTY + number row on all IMEs |
+| Airline, Class | `KeyboardCapitalization.Characters` (caps-lock) |
+| Boarding group, MQM/MQS/MQD, Award Miles, Ticket # | Numeric |
+| Flight number | Numeric |
+| All others | Standard text |
 
 ---
 
@@ -111,15 +128,15 @@ When adding/editing a flight, tapping the 🔍 button next to the flight number 
 3. Sync Gradle — no local API keys are required to build.
 4. Run on a device or emulator (API 26+).
 
-The app uses `fallbackToDestructiveMigration()` in Room, so upgrading the schema version wipes the local DB on-device. For production use, write proper Room migration scripts before removing that setting.
+The app uses `fallbackToDestructiveMigration()` in Room, so upgrading the schema version wipes the local DB on-device. Write proper `Migration` objects before removing that setting for production use.
 
 ---
 
 ## Known Gaps / Next Steps
 
-- **Settings screen** — needed to enter the AirLabs API key
 - **Room migrations** — currently uses destructive migration; add proper `Migration` objects before shipping
 - **Map airport coverage** — arcs only draw for airports in `iata_coords.csv`; flights with unlisted codes are silently skipped
 - **Flight detail** — timezone-aware display of times (currently shows device-local time)
+- **AirLabs historical data** — the API only covers live/upcoming flights; past flights need manual entry
 - **Wear OS / widget** — not implemented
-- **iOS / cross-platform** — Android only; Flutter was considered but native Kotlin was chosen for long-term Android maintainability
+- **iOS / cross-platform** — Android only; Flutter was considered but native Kotlin was chosen
