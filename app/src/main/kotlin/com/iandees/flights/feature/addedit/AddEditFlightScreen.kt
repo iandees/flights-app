@@ -72,10 +72,10 @@ fun AddEditFlightScreen(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FormField("From (IATA)", uiState.departureAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) {
-                        viewModel.update { copy(departureAirport = it) }
+                        viewModel.onDepartureAirportChange(it)
                     }
                     FormField("To (IATA)", uiState.arrivalAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) {
-                        viewModel.update { copy(arrivalAirport = it) }
+                        viewModel.onArrivalAirportChange(it)
                     }
                 }
 

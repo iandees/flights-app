@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iandees.flights.core.database.FlightRepository
 import com.iandees.flights.core.model.Flight
+import com.iandees.flights.core.network.AirportTimezoneRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -46,6 +47,7 @@ data class AddEditUiState(
 @HiltViewModel
 class AddEditFlightViewModel @Inject constructor(
     private val repository: FlightRepository,
+    private val airportTz: AirportTimezoneRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddEditUiState())
@@ -95,6 +97,26 @@ class AddEditFlightViewModel @Inject constructor(
 
     fun update(block: AddEditUiState.() -> AddEditUiState) {
         _uiState.update { it.block() }
+    }
+
+    /** Called when the departure airport code changes; prefills timezone if not already set. */
+    fun onDepartureAirportChange(iata: String) {
+        _uiState.update { state ->
+            val tz = if (state.departureTimezone.isBlank())
+                airportTz.timezoneFor(iata) ?: state.departureTimezone
+            else state.departureTimezone
+            state.copy(departureAirport = iata.uppercase(), departureTimezone = tz)
+        }
+    }
+
+    /** Called when the arrival airport code changes; prefills timezone if not already set. */
+    fun onArrivalAirportChange(iata: String) {
+        _uiState.update { state ->
+            val tz = if (state.arrivalTimezone.isBlank())
+                airportTz.timezoneFor(iata) ?: state.arrivalTimezone
+            else state.arrivalTimezone
+            state.copy(arrivalAirport = iata.uppercase(), arrivalTimezone = tz)
+        }
     }
 
     fun save(existingId: Long?) {
