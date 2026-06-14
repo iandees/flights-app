@@ -181,6 +181,7 @@ fun AddEditFlightScreen(
  * Suggestions show the IATA code + airport name/city.
  * Selecting a suggestion fills the field with just the IATA code.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AirportAutocompleteField(
     label: String,
