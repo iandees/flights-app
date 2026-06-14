@@ -19,6 +19,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.iandees.flights.core.network.AirportSuggestion
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,6 +34,8 @@ fun AddEditFlightScreen(
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val depSuggestions by viewModel.depSuggestions.collectAsStateWithLifecycle()
+    val arrSuggestions by viewModel.arrSuggestions.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onBack()
@@ -71,12 +74,22 @@ fun AddEditFlightScreen(
                     viewModel.update { copy(flightNumber = it) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FormField("From (IATA)", uiState.departureAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) {
-                        viewModel.onDepartureAirportChange(it)
-                    }
-                    FormField("To (IATA)", uiState.arrivalAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) {
-                        viewModel.onArrivalAirportChange(it)
-                    }
+                    AirportAutocompleteField(
+                        label = "From (IATA)",
+                        value = uiState.departureAirport,
+                        suggestions = depSuggestions,
+                        modifier = Modifier.weight(1f),
+                        onValueChange = { viewModel.onDepartureAirportChange(it) },
+                        onSuggestionSelected = { viewModel.onDepartureSuggestionSelected(it) },
+                    )
+                    AirportAutocompleteField(
+                        label = "To (IATA)",
+                        value = uiState.arrivalAirport,
+                        suggestions = arrSuggestions,
+                        modifier = Modifier.weight(1f),
+                        onValueChange = { viewModel.onArrivalAirportChange(it) },
+                        onSuggestionSelected = { viewModel.onArrivalSuggestionSelected(it) },
+                    )
                 }
 
                 DateTimePickerField(
@@ -159,6 +172,56 @@ fun AddEditFlightScreen(
             }
 
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Text field with a dropdown showing up to 6 airport suggestions.
+ * Suggestions show the IATA code + airport name/city.
+ * Selecting a suggestion fills the field with just the IATA code.
+ */
+@Composable
+private fun AirportAutocompleteField(
+    label: String,
+    value: String,
+    suggestions: List<AirportSuggestion>,
+    modifier: Modifier = Modifier,
+    onValueChange: (String) -> Unit,
+    onSuggestionSelected: (String) -> Unit,
+) {
+    ExposedDropdownMenuBox(
+        expanded = suggestions.isNotEmpty(),
+        onExpandedChange = {},
+        modifier = modifier,
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            label = { Text(label) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+        )
+        if (suggestions.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = true,
+                onDismissRequest = { onSuggestionSelected(value) },
+            ) {
+                suggestions.forEach { s ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(s.iata, style = MaterialTheme.typography.bodyMedium)
+                                Text(s.label, style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1)
+                            }
+                        },
+                        onClick = { onSuggestionSelected(s.iata) },
+                    )
+                }
+            }
         }
     }
 }

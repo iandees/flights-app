@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iandees.flights.core.database.FlightRepository
 import com.iandees.flights.core.model.Flight
+import com.iandees.flights.core.network.AirportSearchRepository
+import com.iandees.flights.core.network.AirportSuggestion
 import com.iandees.flights.core.network.AirportTimezoneRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -48,10 +50,17 @@ data class AddEditUiState(
 class AddEditFlightViewModel @Inject constructor(
     private val repository: FlightRepository,
     private val airportTz: AirportTimezoneRepository,
+    private val airportSearch: AirportSearchRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddEditUiState())
     val uiState: StateFlow<AddEditUiState> = _uiState.asStateFlow()
+
+    private val _depSuggestions = MutableStateFlow<List<AirportSuggestion>>(emptyList())
+    val depSuggestions: StateFlow<List<AirportSuggestion>> = _depSuggestions.asStateFlow()
+
+    private val _arrSuggestions = MutableStateFlow<List<AirportSuggestion>>(emptyList())
+    val arrSuggestions: StateFlow<List<AirportSuggestion>> = _arrSuggestions.asStateFlow()
 
     fun loadFlight(id: Long) {
         viewModelScope.launch {
@@ -107,9 +116,17 @@ class AddEditFlightViewModel @Inject constructor(
             else state.departureTimezone
             state.copy(departureAirport = iata.uppercase(), departureTimezone = tz)
         }
+        _depSuggestions.value = airportSearch.search(iata)
     }
 
-    /** Called when the arrival airport code changes; prefills timezone if not already set. */
+    fun onDepartureSuggestionSelected(iata: String) {
+        _uiState.update { state ->
+            val tz = airportTz.timezoneFor(iata) ?: state.departureTimezone
+            state.copy(departureAirport = iata, departureTimezone = tz)
+        }
+        _depSuggestions.value = emptyList()
+    }
+
     fun onArrivalAirportChange(iata: String) {
         _uiState.update { state ->
             val tz = if (state.arrivalTimezone.isBlank())
@@ -117,6 +134,15 @@ class AddEditFlightViewModel @Inject constructor(
             else state.arrivalTimezone
             state.copy(arrivalAirport = iata.uppercase(), arrivalTimezone = tz)
         }
+        _arrSuggestions.value = airportSearch.search(iata)
+    }
+
+    fun onArrivalSuggestionSelected(iata: String) {
+        _uiState.update { state ->
+            val tz = airportTz.timezoneFor(iata) ?: state.arrivalTimezone
+            state.copy(arrivalAirport = iata, arrivalTimezone = tz)
+        }
+        _arrSuggestions.value = emptyList()
     }
 
     fun save(existingId: Long?) {
