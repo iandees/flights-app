@@ -1,6 +1,9 @@
 package com.iandees.flights
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.Map
@@ -57,6 +60,7 @@ fun FlightsNavHost() {
     val showBottomBar = bottomNavItems.any { it.screen.route == currentDestination?.route }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0),  // let each screen manage its own insets
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
