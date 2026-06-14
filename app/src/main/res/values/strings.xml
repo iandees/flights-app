@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Flights</string>
+    <string name="tab_flights">Flights</string>
+    <string name="tab_map">Map</string>
+    <string name="tab_stats">Stats</string>
+    <string name="add_flight">Add Flight</string>
+    <string name="edit_flight">Edit Flight</string>
+    <string name="import_csv">Import CSV</string>
+    <string name="no_flights">No flights yet.\nTap + to add one or import from CSV.</string>
+</resources>

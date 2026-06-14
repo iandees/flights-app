@@ -1,0 +1,30 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Local config (contains SDK path, do not commit)
+local.properties
+
+# Keystore files
+*.jks
+*.keystore
+
+# Room schema exports (optional — remove if you want to track migrations)
+app/schemas/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Kotlin / Java
+*.class
+
+# Logs
+*.log
