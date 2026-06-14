@@ -40,4 +40,8 @@ data class Flight(
 
     // Free-form
     val notes: String,
+
+    // IANA timezone ID for departure/arrival (e.g. "America/Chicago")
+    val departureTimezone: String,
+    val arrivalTimezone: String,
 )

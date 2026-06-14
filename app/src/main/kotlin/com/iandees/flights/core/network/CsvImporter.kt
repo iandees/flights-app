@@ -91,12 +91,14 @@ object CsvImporter {
                             boardingGroup    = group,
                             seatClass        = seatClass,
                             planeModel       = plane,
-                            registration     = reg,   // aircraft tail number / N-code
+                            registration     = reg,
                             mqm              = mqm,
                             mqs              = mqs,
                             mqd              = mqd,
                             awardMiles       = award,
                             notes            = notes,
+                            departureTimezone = "",
+                            arrivalTimezone   = "",
                         )
                     )
                 } catch (e: Exception) {

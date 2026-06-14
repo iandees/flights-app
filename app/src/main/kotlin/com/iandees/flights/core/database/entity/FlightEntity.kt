@@ -38,4 +38,8 @@ data class FlightEntity(
 
     // Notes
     val notes: String,
+
+    // IANA timezone IDs
+    @ColumnInfo(name = "departure_timezone") val departureTimezone: String,
+    @ColumnInfo(name = "arrival_timezone") val arrivalTimezone: String,
 )

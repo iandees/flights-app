@@ -24,6 +24,8 @@ fun FlightEntity.toDomain() = Flight(
     mqd = mqd,
     awardMiles = awardMiles,
     notes = notes,
+    departureTimezone = departureTimezone,
+    arrivalTimezone = arrivalTimezone,
 )
 
 fun Flight.toEntity() = FlightEntity(
@@ -46,4 +48,6 @@ fun Flight.toEntity() = FlightEntity(
     mqd = mqd,
     awardMiles = awardMiles,
     notes = notes,
+    departureTimezone = departureTimezone,
+    arrivalTimezone = arrivalTimezone,
 )

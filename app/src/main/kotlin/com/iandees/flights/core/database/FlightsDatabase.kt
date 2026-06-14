@@ -7,7 +7,7 @@ import com.iandees.flights.core.database.entity.FlightEntity
 
 @Database(
     entities = [FlightEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class FlightsDatabase : RoomDatabase() {
