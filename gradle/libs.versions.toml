@@ -1,5 +1,5 @@
 [versions]
-agp = "8.7.3"
+agp = "8.13.2"
 kotlin = "2.1.0"
 ksp = "2.1.0-1.0.29"
 coreKtx = "1.15.0"
@@ -15,6 +15,7 @@ maplibre = "11.12.2"
 maplibreCompose = "0.12.1"
 vico = "2.0.1"
 commonsCsv = "1.12.0"
+okhttp = "4.12.0"
 kotlinxSerialization = "1.7.3"
 kotlinxDatetime = "0.6.1"
 datastore = "1.1.2"
@@ -64,6 +65,7 @@ vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", ve
 
 # CSV
 commons-csv = { group = "org.apache.commons", name = "commons-csv", version.ref = "commonsCsv" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 
 # Kotlin serialization / datetime
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }

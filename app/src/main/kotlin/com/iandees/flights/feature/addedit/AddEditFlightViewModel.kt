@@ -4,12 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iandees.flights.core.database.FlightRepository
 import com.iandees.flights.core.model.Flight
-import com.iandees.flights.core.network.AirportSearchRepository
-import com.iandees.flights.core.network.AirportSuggestion
-import com.iandees.flights.core.network.AirportTimezoneRepository
+import com.iandees.flights.core.network.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.*
 import javax.inject.Inject
 
@@ -17,16 +17,17 @@ data class AddEditUiState(
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
     val error: String? = null,
+    val isLookingUpFlight: Boolean = false,
+    val lookupError: String? = null,
 
     val airline: String = "",
     val flightNumber: String = "",
     val departureAirport: String = "",
     val arrivalAirport: String = "",
 
-    // Date/time stored as "YYYY-MM-DD" / "HH:MM" strings
     val departureDate: String = "",
     val departureTime: String = "",
-    val departureTimezone: String = "",   // IANA ID, e.g. "America/Chicago"
+    val departureTimezone: String = "",
 
     val arrivalDate: String = "",
     val arrivalTime: String = "",
@@ -51,16 +52,50 @@ class AddEditFlightViewModel @Inject constructor(
     private val repository: FlightRepository,
     private val airportTz: AirportTimezoneRepository,
     private val airportSearch: AirportSearchRepository,
+    private val airlineSearch: AirlineSearchRepository,
+    private val timezoneSearch: TimezoneSearchRepository,
+    private val flightLookup: FlightLookupService,
+    private val settings: AppSettingsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddEditUiState())
     val uiState: StateFlow<AddEditUiState> = _uiState.asStateFlow()
 
+    // Autocomplete suggestion streams
     private val _depSuggestions = MutableStateFlow<List<AirportSuggestion>>(emptyList())
     val depSuggestions: StateFlow<List<AirportSuggestion>> = _depSuggestions.asStateFlow()
 
     private val _arrSuggestions = MutableStateFlow<List<AirportSuggestion>>(emptyList())
     val arrSuggestions: StateFlow<List<AirportSuggestion>> = _arrSuggestions.asStateFlow()
+
+    private val _airlineSuggestions = MutableStateFlow<List<AirlineSuggestion>>(emptyList())
+    val airlineSuggestions: StateFlow<List<AirlineSuggestion>> = _airlineSuggestions.asStateFlow()
+
+    private val _depTzSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val depTzSuggestions: StateFlow<List<String>> = _depTzSuggestions.asStateFlow()
+
+    private val _arrTzSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val arrTzSuggestions: StateFlow<List<String>> = _arrTzSuggestions.asStateFlow()
+
+    // Usage counts from existing flights (computed once)
+    private var airlineUsage: Map<String, Int> = emptyMap()
+    private var timezoneUsage: Map<String, Int> = emptyMap()
+
+    init {
+        viewModelScope.launch {
+            repository.getAllFlights().first().let { flights ->
+                airlineUsage  = flights.groupingBy { it.airline }.eachCount()
+                timezoneUsage = buildMap {
+                    flights.forEach { f ->
+                        if (f.departureTimezone.isNotBlank())
+                            merge(f.departureTimezone, 1, Int::plus)
+                        if (f.arrivalTimezone.isNotBlank())
+                            merge(f.arrivalTimezone, 1, Int::plus)
+                    }
+                }
+            }
+        }
+    }
 
     fun loadFlight(id: Long) {
         viewModelScope.launch {
@@ -108,47 +143,117 @@ class AddEditFlightViewModel @Inject constructor(
         _uiState.update { it.block() }
     }
 
-    /** Called when the departure airport code changes; prefills timezone if not already set. */
+    // ── Airline autocomplete ──────────────────────────────────────────────
+
+    fun onAirlineChange(value: String) {
+        _uiState.update { it.copy(airline = value) }
+        _airlineSuggestions.value = airlineSearch.search(value, airlineUsage)
+    }
+
+    fun onAirlineSuggestionSelected(iata: String, name: String) {
+        _uiState.update { it.copy(airline = "$iata - $name") }
+        _airlineSuggestions.value = emptyList()
+    }
+
+    fun dismissAirlineSuggestions() { _airlineSuggestions.value = emptyList() }
+
+    // ── Airport autocomplete ──────────────────────────────────────────────
+
     fun onDepartureAirportChange(iata: String) {
-        _uiState.update { state ->
-            val tz = if (state.departureTimezone.isBlank())
-                airportTz.timezoneFor(iata) ?: state.departureTimezone
-            else state.departureTimezone
-            state.copy(departureAirport = iata.uppercase(), departureTimezone = tz)
-        }
+        val tz = if (_uiState.value.departureTimezone.isBlank())
+            airportTz.timezoneFor(iata) ?: _uiState.value.departureTimezone
+        else _uiState.value.departureTimezone
+        _uiState.update { it.copy(departureAirport = iata.uppercase(), departureTimezone = tz) }
         _depSuggestions.value = airportSearch.search(iata)
     }
 
     fun onDepartureSuggestionSelected(iata: String) {
-        _uiState.update { state ->
-            val tz = airportTz.timezoneFor(iata) ?: state.departureTimezone
-            state.copy(departureAirport = iata, departureTimezone = tz)
-        }
+        val tz = airportTz.timezoneFor(iata) ?: _uiState.value.departureTimezone
+        _uiState.update { it.copy(departureAirport = iata, departureTimezone = tz) }
         _depSuggestions.value = emptyList()
     }
 
     fun onArrivalAirportChange(iata: String) {
-        _uiState.update { state ->
-            val tz = if (state.arrivalTimezone.isBlank())
-                airportTz.timezoneFor(iata) ?: state.arrivalTimezone
-            else state.arrivalTimezone
-            state.copy(arrivalAirport = iata.uppercase(), arrivalTimezone = tz)
-        }
+        val tz = if (_uiState.value.arrivalTimezone.isBlank())
+            airportTz.timezoneFor(iata) ?: _uiState.value.arrivalTimezone
+        else _uiState.value.arrivalTimezone
+        _uiState.update { it.copy(arrivalAirport = iata.uppercase(), arrivalTimezone = tz) }
         _arrSuggestions.value = airportSearch.search(iata)
     }
 
     fun onArrivalSuggestionSelected(iata: String) {
-        _uiState.update { state ->
-            val tz = airportTz.timezoneFor(iata) ?: state.arrivalTimezone
-            state.copy(arrivalAirport = iata, arrivalTimezone = tz)
-        }
+        val tz = airportTz.timezoneFor(iata) ?: _uiState.value.arrivalTimezone
+        _uiState.update { it.copy(arrivalAirport = iata, arrivalTimezone = tz) }
         _arrSuggestions.value = emptyList()
     }
+
+    // ── Timezone autocomplete ─────────────────────────────────────────────
+
+    fun onDepTimezoneChange(value: String) {
+        _uiState.update { it.copy(departureTimezone = value) }
+        _depTzSuggestions.value = timezoneSearch.search(value, timezoneUsage)
+    }
+
+    fun onDepTimezoneSuggestionSelected(tz: String) {
+        _uiState.update { it.copy(departureTimezone = tz) }
+        _depTzSuggestions.value = emptyList()
+    }
+
+    fun onArrTimezoneChange(value: String) {
+        _uiState.update { it.copy(arrivalTimezone = value) }
+        _arrTzSuggestions.value = timezoneSearch.search(value, timezoneUsage)
+    }
+
+    fun onArrTimezoneSuggestionSelected(tz: String) {
+        _uiState.update { it.copy(arrivalTimezone = tz) }
+        _arrTzSuggestions.value = emptyList()
+    }
+
+    // ── Flight lookup (AirLabs) ───────────────────────────────────────────
+
+    /** Called when both airline+flight number are set; fetches schedule data from AirLabs. */
+    fun lookupFlight() {
+        val s = _uiState.value
+        val flightIata = buildFlightIata(s.airline, s.flightNumber)
+        if (flightIata.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLookingUpFlight = true, lookupError = null) }
+            val apiKey = settings.airLabsApiKey.first()
+            val result = withContext(Dispatchers.IO) { flightLookup.lookup(flightIata, apiKey) }
+            if (result != null) {
+                val depTz = airportTz.timezoneFor(result.departureAirport) ?: s.departureTimezone
+                val arrTz = airportTz.timezoneFor(result.arrivalAirport)   ?: s.arrivalTimezone
+                _uiState.update { it.copy(
+                    isLookingUpFlight = false,
+                    departureAirport  = result.departureAirport,
+                    arrivalAirport    = result.arrivalAirport,
+                    departureDate     = result.departureDate,
+                    departureTime     = result.departureTime,
+                    departureTimezone = depTz,
+                    arrivalDate       = result.arrivalDate,
+                    arrivalTime       = result.arrivalTime,
+                    arrivalTimezone   = arrTz,
+                    registration      = result.registration.ifBlank { it.registration },
+                    planeModel        = result.aircraftModel.ifBlank { it.planeModel },
+                ) }
+            } else {
+                val msg = if (apiKey.isBlank())
+                    "Set your AirLabs API key in Settings to auto-fill flight data"
+                else
+                    "Flight not found or network error"
+                _uiState.update { it.copy(isLookingUpFlight = false, lookupError = msg) }
+            }
+        }
+    }
+
+    fun dismissLookupError() { _uiState.update { it.copy(lookupError = null) } }
+
+    // ── Save ──────────────────────────────────────────────────────────────
 
     fun save(existingId: Long?) {
         viewModelScope.launch {
             val s = _uiState.value
-
             fun parseInstant(date: String, time: String, tzId: String): Instant? {
                 if (date.isBlank()) return null
                 return try {
@@ -183,12 +288,20 @@ class AddEditFlightViewModel @Inject constructor(
                 awardMiles        = s.awardMiles.toIntOrNull(),
                 notes             = s.notes.trim(),
             )
-
             if (existingId != null) repository.updateFlight(flight)
             else repository.saveFlight(flight)
-
             _uiState.update { it.copy(isSaved = true) }
         }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    /** Extracts the IATA flight code from airline + flight number, e.g. "DL" + "123" → "DL123". */
+    private fun buildFlightIata(airline: String, flightNumber: String): String {
+        val num = flightNumber.trim().trimStart('0').ifBlank { return "" }
+        // Airline field may be "DL - Delta Air Lines" or just "DL"
+        val iata = airline.trim().take(2).uppercase()
+        return if (iata.length == 2) "$iata$num" else ""
     }
 
     private fun String.toTzOrDefault(): TimeZone =

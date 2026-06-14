@@ -7,11 +7,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -19,6 +18,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.iandees.flights.core.network.AirlineSuggestion
 import com.iandees.flights.core.network.AirportSuggestion
 import java.util.Calendar
 
@@ -29,16 +29,24 @@ fun AddEditFlightScreen(
     onBack: () -> Unit,
     viewModel: AddEditFlightViewModel = hiltViewModel(),
 ) {
-    LaunchedEffect(flightId) {
-        if (flightId != null) viewModel.loadFlight(flightId)
-    }
+    LaunchedEffect(flightId) { if (flightId != null) viewModel.loadFlight(flightId) }
 
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val depSuggestions by viewModel.depSuggestions.collectAsStateWithLifecycle()
-    val arrSuggestions by viewModel.arrSuggestions.collectAsStateWithLifecycle()
+    val uiState          by viewModel.uiState.collectAsStateWithLifecycle()
+    val depSuggestions   by viewModel.depSuggestions.collectAsStateWithLifecycle()
+    val arrSuggestions   by viewModel.arrSuggestions.collectAsStateWithLifecycle()
+    val airlineSuggestions by viewModel.airlineSuggestions.collectAsStateWithLifecycle()
+    val depTzSuggestions by viewModel.depTzSuggestions.collectAsStateWithLifecycle()
+    val arrTzSuggestions by viewModel.arrTzSuggestions.collectAsStateWithLifecycle()
 
-    LaunchedEffect(uiState.isSaved) {
-        if (uiState.isSaved) onBack()
+    LaunchedEffect(uiState.isSaved) { if (uiState.isSaved) onBack() }
+
+    uiState.lookupError?.let { msg ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissLookupError,
+            title = { Text("Flight lookup") },
+            text  = { Text(msg) },
+            confirmButton = { TextButton(onClick = viewModel::dismissLookupError) { Text("OK") } },
+        )
     }
 
     Scaffold(
@@ -46,13 +54,11 @@ fun AddEditFlightScreen(
             TopAppBar(
                 title = { Text(if (flightId == null) "Add Flight" else "Edit Flight") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
+                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.save(flightId) }) {
-                        Icon(Icons.Default.Check, contentDescription = "Save")
+                        Icon(Icons.Default.Check, "Save")
                     }
                 },
             )
@@ -66,13 +72,47 @@ fun AddEditFlightScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // ── Route ──────────────────────────────────────────────────────
             FormSection("Route") {
-                FormField("Airline", uiState.airline, caps = KeyboardCapitalization.Words) {
-                    viewModel.update { copy(airline = it) }
+                // Airline autocomplete
+                AutocompleteField(
+                    label = "Airline",
+                    value = uiState.airline,
+                    suggestions = airlineSuggestions.map { "${it.iata} – ${it.name}" },
+                    onValueChange = { viewModel.onAirlineChange(it) },
+                    onSuggestionSelected = { idx ->
+                        val s = airlineSuggestions[idx]
+                        viewModel.onAirlineSuggestionSelected(s.iata, s.name)
+                    },
+                    onDismiss = viewModel::dismissAirlineSuggestions,
+                    caps = KeyboardCapitalization.Words,
+                )
+
+                // Flight number + lookup button
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FormField(
+                        label = "Flight No. (e.g. 123)",
+                        value = uiState.flightNumber,
+                        modifier = Modifier.weight(1f),
+                        caps = KeyboardCapitalization.Characters,
+                    ) { viewModel.update { copy(flightNumber = it) } }
+
+                    if (uiState.isLookingUpFlight) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    } else {
+                        IconButton(
+                            onClick = { viewModel.lookupFlight() },
+                            enabled = uiState.airline.isNotBlank() && uiState.flightNumber.isNotBlank(),
+                        ) {
+                            Icon(Icons.Default.Search, contentDescription = "Auto-fill from flight number")
+                        }
+                    }
                 }
-                FormField("Flight Number (e.g. DL123)", uiState.flightNumber, caps = KeyboardCapitalization.Characters) {
-                    viewModel.update { copy(flightNumber = it) }
-                }
+
+                // From / To airport autocomplete
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AirportAutocompleteField(
                         label = "From (IATA)",
@@ -97,8 +137,10 @@ fun AddEditFlightScreen(
                     date = uiState.departureDate,
                     time = uiState.departureTime,
                     timezone = uiState.departureTimezone,
+                    timezoneSuggestions = depTzSuggestions,
                     onDateTimeChange = { d, t -> viewModel.update { copy(departureDate = d, departureTime = t) } },
-                    onTimezoneChange = { viewModel.update { copy(departureTimezone = it) } },
+                    onTimezoneChange = { viewModel.onDepTimezoneChange(it) },
+                    onTimezoneSuggestionSelected = { viewModel.onDepTimezoneSuggestionSelected(it) },
                 )
 
                 DateTimePickerField(
@@ -106,25 +148,40 @@ fun AddEditFlightScreen(
                     date = uiState.arrivalDate,
                     time = uiState.arrivalTime,
                     timezone = uiState.arrivalTimezone,
+                    timezoneSuggestions = arrTzSuggestions,
                     onDateTimeChange = { d, t -> viewModel.update { copy(arrivalDate = d, arrivalTime = t) } },
-                    onTimezoneChange = { viewModel.update { copy(arrivalTimezone = it) } },
+                    onTimezoneChange = { viewModel.onArrTimezoneChange(it) },
+                    onTimezoneSuggestionSelected = { viewModel.onArrTimezoneSuggestionSelected(it) },
                 )
             }
 
+            // ── Booking ────────────────────────────────────────────────────
             FormSection("Booking") {
-                FormField("Record Locator (PNR)", uiState.recordLocator, caps = KeyboardCapitalization.Characters) {
-                    viewModel.update { copy(recordLocator = it) }
-                }
+                // Record locator: uppercase letters + digits
+                FormField(
+                    label = "Record Locator (PNR)",
+                    value = uiState.recordLocator,
+                    caps = KeyboardCapitalization.Characters,
+                    keyboardType = KeyboardType.Ascii,
+                ) { viewModel.update { copy(recordLocator = it.uppercase()) } }
+
                 FormField("Ticket Number", uiState.ticketNumber, keyboardType = KeyboardType.Number) {
                     viewModel.update { copy(ticketNumber = it) }
                 }
             }
 
+            // ── Seat ───────────────────────────────────────────────────────
             FormSection("Seat") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FormField("Seat (e.g. 12A)", uiState.seat, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) {
-                        viewModel.update { copy(seat = it) }
-                    }
+                    // Seat: digits + capital letters (e.g. "12A")
+                    FormField(
+                        label = "Seat (e.g. 12A)",
+                        value = uiState.seat,
+                        modifier = Modifier.weight(1f),
+                        caps = KeyboardCapitalization.Characters,
+                        keyboardType = KeyboardType.Ascii,
+                    ) { viewModel.update { copy(seat = it.uppercase()) } }
+
                     FormField("Boarding Group", uiState.boardingGroup, modifier = Modifier.weight(1f)) {
                         viewModel.update { copy(boardingGroup = it) }
                     }
@@ -134,15 +191,21 @@ fun AddEditFlightScreen(
                 }
             }
 
+            // ── Aircraft ───────────────────────────────────────────────────
             FormSection("Aircraft") {
                 FormField("Model (e.g. Boeing 737-800)", uiState.planeModel, caps = KeyboardCapitalization.Words) {
                     viewModel.update { copy(planeModel = it) }
                 }
-                FormField("Registration / N-code (e.g. N12345)", uiState.registration, caps = KeyboardCapitalization.Characters) {
-                    viewModel.update { copy(registration = it) }
-                }
+                // Registration / N-code: uppercase letters + digits
+                FormField(
+                    label = "Registration / N-code (e.g. N12345)",
+                    value = uiState.registration,
+                    caps = KeyboardCapitalization.Characters,
+                    keyboardType = KeyboardType.Ascii,
+                ) { viewModel.update { copy(registration = it.uppercase()) } }
             }
 
+            // ── Miles ──────────────────────────────────────────────────────
             FormSection("Miles & Segments") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FormField("MQM", uiState.mqm, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) {
@@ -160,6 +223,7 @@ fun AddEditFlightScreen(
                 }
             }
 
+            // ── Notes ──────────────────────────────────────────────────────
             FormSection("Notes") {
                 OutlinedTextField(
                     value = uiState.notes,
@@ -176,11 +240,49 @@ fun AddEditFlightScreen(
     }
 }
 
-/**
- * Text field with a dropdown showing up to 6 airport suggestions.
- * Suggestions show the IATA code + airport name/city.
- * Selecting a suggestion fills the field with just the IATA code.
- */
+// ── Reusable composables ──────────────────────────────────────────────────────
+
+/** Generic string-list autocomplete using ExposedDropdownMenuBox. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AutocompleteField(
+    label: String,
+    value: String,
+    suggestions: List<String>,
+    onValueChange: (String) -> Unit,
+    onSuggestionSelected: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    caps: KeyboardCapitalization = KeyboardCapitalization.None,
+    keyboardType: KeyboardType = KeyboardType.Text,
+) {
+    ExposedDropdownMenuBox(
+        expanded = suggestions.isNotEmpty(),
+        onExpandedChange = {},
+        modifier = modifier,
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            label = { Text(label) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(capitalization = caps, keyboardType = keyboardType),
+        )
+        if (suggestions.isNotEmpty()) {
+            ExposedDropdownMenu(expanded = true, onDismissRequest = onDismiss) {
+                suggestions.forEachIndexed { idx, text ->
+                    DropdownMenuItem(
+                        text = { Text(text, style = MaterialTheme.typography.bodyMedium) },
+                        onClick = { onSuggestionSelected(idx) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Airport-specific autocomplete showing IATA code + airport name. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AirportAutocompleteField(
@@ -205,18 +307,14 @@ private fun AirportAutocompleteField(
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
         )
         if (suggestions.isNotEmpty()) {
-            ExposedDropdownMenu(
-                expanded = true,
-                onDismissRequest = { onSuggestionSelected(value) },
-            ) {
+            ExposedDropdownMenu(expanded = true, onDismissRequest = { onSuggestionSelected(value) }) {
                 suggestions.forEach { s ->
                     DropdownMenuItem(
                         text = {
                             Column {
                                 Text(s.iata, style = MaterialTheme.typography.bodyMedium)
                                 Text(s.label, style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                             }
                         },
                         onClick = { onSuggestionSelected(s.iata) },
@@ -227,30 +325,27 @@ private fun AirportAutocompleteField(
     }
 }
 
-/**
- * A single row that opens a DatePickerDialog, then immediately chains into a TimePickerDialog,
- * followed by an editable timezone field.
- */
+/** Combined date+time picker button, plus timezone autocomplete field. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateTimePickerField(
     label: String,
     date: String,
     time: String,
     timezone: String,
+    timezoneSuggestions: List<String>,
     onDateTimeChange: (date: String, time: String) -> Unit,
     onTimezoneChange: (String) -> Unit,
+    onTimezoneSuggestionSelected: (String) -> Unit,
 ) {
     val context = LocalContext.current
-
-    // Parse current values so pickers open at the right position
     val cal = remember(date, time) {
         Calendar.getInstance().also { c ->
             date.split("-").mapNotNull { it.toIntOrNull() }.takeIf { it.size == 3 }?.let { (y, m, d) ->
                 c.set(y, m - 1, d)
             }
             time.split(":").mapNotNull { it.toIntOrNull() }.takeIf { it.size == 2 }?.let { (h, min) ->
-                c.set(Calendar.HOUR_OF_DAY, h)
-                c.set(Calendar.MINUTE, min)
+                c.set(Calendar.HOUR_OF_DAY, h); c.set(Calendar.MINUTE, min)
             }
         }
     }
@@ -258,47 +353,34 @@ private fun DateTimePickerField(
     val displayText = when {
         date.isBlank() -> "$label date & time"
         time.isBlank() -> date
-        else -> "$date  $time"
+        else           -> "$date  $time"
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        // Single button → DatePicker → TimePicker chained
         OutlinedButton(
             onClick = {
-                DatePickerDialog(
-                    context,
-                    { _, year, month, day ->
-                        val dateStr = "%04d-%02d-%02d".format(year, month + 1, day)
-                        // Immediately chain into time picker
-                        TimePickerDialog(
-                            context,
-                            { _, hour, minute ->
-                                onDateTimeChange(dateStr, "%02d:%02d".format(hour, minute))
-                            },
-                            cal.get(Calendar.HOUR_OF_DAY),
-                            cal.get(Calendar.MINUTE),
-                            true, // 24-hour
-                        ).show()
-                    },
-                    cal.get(Calendar.YEAR),
-                    cal.get(Calendar.MONTH),
-                    cal.get(Calendar.DAY_OF_MONTH),
-                ).show()
+                DatePickerDialog(context, { _, year, month, day ->
+                    val dateStr = "%04d-%02d-%02d".format(year, month + 1, day)
+                    TimePickerDialog(context, { _, hour, minute ->
+                        onDateTimeChange(dateStr, "%02d:%02d".format(hour, minute))
+                    }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
+                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp))
+            Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
             Text(displayText, maxLines = 1)
         }
 
-        // Timezone field
-        OutlinedTextField(
+        // Timezone autocomplete
+        AutocompleteField(
+            label = "$label timezone (e.g. America/Chicago)",
             value = timezone,
+            suggestions = timezoneSuggestions,
             onValueChange = onTimezoneChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("$label timezone (e.g. America/Chicago)") },
-            singleLine = true,
+            onSuggestionSelected = { idx -> onTimezoneSuggestionSelected(timezoneSuggestions[idx]) },
+            onDismiss = { onTimezoneSuggestionSelected(timezone) },
         )
     }
 }

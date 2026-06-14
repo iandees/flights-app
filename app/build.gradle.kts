@@ -96,6 +96,7 @@ dependencies {
 
     // CSV
     implementation(libs.commons.csv)
+    implementation(libs.okhttp)
 
     // Kotlin extras
     implementation(libs.kotlinx.serialization.json)
