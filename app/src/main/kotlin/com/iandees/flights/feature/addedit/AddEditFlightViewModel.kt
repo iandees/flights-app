@@ -211,7 +211,7 @@ class AddEditFlightViewModel @Inject constructor(
 
     // ── Flight lookup (AirLabs) ───────────────────────────────────────────
 
-    /** Called when both airline+flight number are set; fetches schedule data from AirLabs. */
+    /** Called when airline + flight number + (optionally) date are set; fetches schedule data from AirLabs. */
     fun lookupFlight() {
         val s = _uiState.value
         val flightIata = buildFlightIata(s.airline, s.flightNumber)
@@ -220,7 +220,16 @@ class AddEditFlightViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLookingUpFlight = true, lookupError = null) }
             val apiKey = settings.airLabsApiKey.first()
-            val result = withContext(Dispatchers.IO) { flightLookup.lookup(flightIata, apiKey) }
+            if (apiKey.isBlank()) {
+                _uiState.update { it.copy(
+                    isLookingUpFlight = false,
+                    lookupError = "Set your AirLabs API key in Settings (⋮ menu) to enable flight lookup",
+                ) }
+                return@launch
+            }
+            val result = withContext(Dispatchers.IO) {
+                flightLookup.lookup(flightIata, apiKey, s.departureDate)
+            }
             if (result != null) {
                 val depTz = airportTz.timezoneFor(result.departureAirport) ?: s.departureTimezone
                 val arrTz = airportTz.timezoneFor(result.arrivalAirport)   ?: s.arrivalTimezone
@@ -228,21 +237,25 @@ class AddEditFlightViewModel @Inject constructor(
                     isLookingUpFlight = false,
                     departureAirport  = result.departureAirport,
                     arrivalAirport    = result.arrivalAirport,
-                    departureDate     = result.departureDate,
-                    departureTime     = result.departureTime,
+                    // Only overwrite date/time if the API returned them (non-blank)
+                    departureDate     = result.departureDate.ifBlank { it.departureDate },
+                    departureTime     = result.departureTime.ifBlank { it.departureTime },
                     departureTimezone = depTz,
-                    arrivalDate       = result.arrivalDate,
-                    arrivalTime       = result.arrivalTime,
+                    arrivalDate       = result.arrivalDate.ifBlank { it.arrivalDate },
+                    arrivalTime       = result.arrivalTime.ifBlank { it.arrivalTime },
                     arrivalTimezone   = arrTz,
                     registration      = result.registration.ifBlank { it.registration },
                     planeModel        = result.aircraftModel.ifBlank { it.planeModel },
                 ) }
             } else {
-                val msg = if (apiKey.isBlank())
-                    "Set your AirLabs API key in Settings to auto-fill flight data"
+                val hint = if (s.departureDate.isBlank())
+                    " Tip: set the departure date first for a better match."
                 else
-                    "Flight not found or network error"
-                _uiState.update { it.copy(isLookingUpFlight = false, lookupError = msg) }
+                    " The flight may not be in AirLabs\u2019 schedule window (live/next ~10 hours only)."
+                _uiState.update { it.copy(
+                    isLookingUpFlight = false,
+                    lookupError = "Flight $flightIata not found.$hint",
+                ) }
             }
         }
     }

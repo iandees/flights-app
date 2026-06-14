@@ -16,7 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.LocalTextStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -107,11 +106,20 @@ fun AddEditFlightScreen(
                     } else {
                         IconButton(
                             onClick = { viewModel.lookupFlight() },
-                            enabled = uiState.airline.isNotBlank() && uiState.flightNumber.isNotBlank(),
+                            enabled = uiState.airline.isNotBlank() &&
+                                      uiState.flightNumber.isNotBlank() &&
+                                      uiState.departureDate.isNotBlank(),
                         ) {
                             Icon(Icons.Default.Search, contentDescription = "Auto-fill from flight number")
                         }
                     }
+                }
+                if (uiState.airline.isNotBlank() && uiState.flightNumber.isNotBlank() && uiState.departureDate.isBlank()) {
+                    Text(
+                        "Set the departure date below, then tap 🔍 to auto-fill route and times.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
 
                 // From / To airport autocomplete
