@@ -29,6 +29,7 @@ fun FlightListScreen(
     viewModel: FlightListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -60,10 +61,14 @@ fun FlightListScreen(
             }
         },
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .padding(top = padding.calculateTopPadding())
+                .fillMaxSize()
+        ) {
             // Search bar
             OutlinedTextField(
-                value = uiState.searchQuery,
+                value = searchQuery,
                 onValueChange = viewModel::onSearchQueryChange,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -71,7 +76,7 @@ fun FlightListScreen(
                 placeholder = { Text("Search flights…") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = {
-                    if (uiState.searchQuery.isNotEmpty()) {
+                    if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
                             Icon(Icons.Default.Clear, contentDescription = "Clear search")
                         }
@@ -87,17 +92,22 @@ fun FlightListScreen(
             } else if (uiState.flights.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        text = if (uiState.searchQuery.isBlank())
+                        text = if (searchQuery.isBlank())
                             "No flights yet.\nTap + to add one or import from CSV."
                         else
-                            "No flights match \"${uiState.searchQuery}\".",
+                            "No flights match \"$searchQuery\".",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 8.dp,
+                        bottom = padding.calculateBottomPadding() + 8.dp,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(uiState.flights, key = { it.id }) { flight ->

@@ -12,7 +12,6 @@ import javax.inject.Inject
 
 data class FlightListUiState(
     val flights: List<Flight> = emptyList(),
-    val searchQuery: String = "",
     val isLoading: Boolean = true,
 )
 
@@ -31,12 +30,15 @@ class FlightListViewModel @Inject constructor(
             if (query.isBlank()) repository.getAllFlights()
             else repository.searchFlights(query)
         }
-        .map { flights -> FlightListUiState(flights = flights, searchQuery = _searchQuery.value, isLoading = false) }
+        .map { flights -> FlightListUiState(flights = flights, isLoading = false) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = FlightListUiState(),
         )
+
+    // Expose raw query directly so the text field value is always in sync.
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
