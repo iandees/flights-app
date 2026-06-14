@@ -1,5 +1,7 @@
 package com.iandees.flights.feature.addedit
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -7,14 +9,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,14 +71,20 @@ fun AddEditFlightScreen(
                     FormField("From (IATA)", uiState.departureAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) { viewModel.update { copy(departureAirport = it) } }
                     FormField("To (IATA)", uiState.arrivalAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) { viewModel.update { copy(arrivalAirport = it) } }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FormField("Dep. Date (YYYY-MM-DD)", uiState.departureDate, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) { viewModel.update { copy(departureDate = it) } }
-                    FormField("Dep. Time (HH:MM)", uiState.departureTime, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) { viewModel.update { copy(departureTime = it) } }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FormField("Arr. Date (YYYY-MM-DD)", uiState.arrivalDate, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) { viewModel.update { copy(arrivalDate = it) } }
-                    FormField("Arr. Time (HH:MM)", uiState.arrivalTime, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) { viewModel.update { copy(arrivalTime = it) } }
-                }
+                DateTimeFields(
+                    label = "Departure",
+                    date = uiState.departureDate,
+                    time = uiState.departureTime,
+                    onDateChange = { viewModel.update { copy(departureDate = it) } },
+                    onTimeChange = { viewModel.update { copy(departureTime = it) } },
+                )
+                DateTimeFields(
+                    label = "Arrival",
+                    date = uiState.arrivalDate,
+                    time = uiState.arrivalTime,
+                    onDateChange = { viewModel.update { copy(arrivalDate = it) } },
+                    onTimeChange = { viewModel.update { copy(arrivalTime = it) } },
+                )
             }
 
             FormSection("Booking") {
@@ -114,6 +126,82 @@ fun AddEditFlightScreen(
             }
 
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * A row with a date button and a time button that each open native Android pickers.
+ */
+@Composable
+private fun DateTimeFields(
+    label: String,
+    date: String,
+    time: String,
+    onDateChange: (String) -> Unit,
+    onTimeChange: (String) -> Unit,
+) {
+    val context = LocalContext.current
+
+    // Parse current values back to calendar fields so the pickers open at the right date/time
+    val cal = remember(date, time) {
+        Calendar.getInstance().also { c ->
+            val dateParts = date.split("-").mapNotNull { it.toIntOrNull() }
+            if (dateParts.size == 3) {
+                c.set(Calendar.YEAR,  dateParts[0])
+                c.set(Calendar.MONTH, dateParts[1] - 1)
+                c.set(Calendar.DAY_OF_MONTH, dateParts[2])
+            }
+            val timeParts = time.split(":").mapNotNull { it.toIntOrNull() }
+            if (timeParts.size == 2) {
+                c.set(Calendar.HOUR_OF_DAY, timeParts[0])
+                c.set(Calendar.MINUTE,      timeParts[1])
+            }
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Date picker button
+        OutlinedButton(
+            onClick = {
+                DatePickerDialog(
+                    context,
+                    { _, year, month, day ->
+                        onDateChange("%04d-%02d-%02d".format(year, month + 1, day))
+                    },
+                    cal.get(Calendar.YEAR),
+                    cal.get(Calendar.MONTH),
+                    cal.get(Calendar.DAY_OF_MONTH),
+                ).show()
+            },
+            modifier = Modifier.weight(1f),
+        ) {
+            Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(if (date.isBlank()) "$label Date" else date, maxLines = 1)
+        }
+
+        // Time picker button
+        OutlinedButton(
+            onClick = {
+                TimePickerDialog(
+                    context,
+                    { _, hour, minute ->
+                        onTimeChange("%02d:%02d".format(hour, minute))
+                    },
+                    cal.get(Calendar.HOUR_OF_DAY),
+                    cal.get(Calendar.MINUTE),
+                    true, // 24-hour
+                ).show()
+            },
+            modifier = Modifier.weight(1f),
+        ) {
+            Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(if (time.isBlank()) "Time" else time, maxLines = 1)
         }
     }
 }
