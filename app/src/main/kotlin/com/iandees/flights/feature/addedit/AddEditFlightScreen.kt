@@ -8,9 +8,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -65,53 +64,87 @@ fun AddEditFlightScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             FormSection("Route") {
-                FormField("Airline", uiState.airline, caps = KeyboardCapitalization.Words) { viewModel.update { copy(airline = it) } }
-                FormField("Flight Number (e.g. DL123)", uiState.flightNumber, caps = KeyboardCapitalization.Characters) { viewModel.update { copy(flightNumber = it) } }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FormField("From (IATA)", uiState.departureAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) { viewModel.update { copy(departureAirport = it) } }
-                    FormField("To (IATA)", uiState.arrivalAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) { viewModel.update { copy(arrivalAirport = it) } }
+                FormField("Airline", uiState.airline, caps = KeyboardCapitalization.Words) {
+                    viewModel.update { copy(airline = it) }
                 }
-                DateTimeFields(
+                FormField("Flight Number (e.g. DL123)", uiState.flightNumber, caps = KeyboardCapitalization.Characters) {
+                    viewModel.update { copy(flightNumber = it) }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FormField("From (IATA)", uiState.departureAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) {
+                        viewModel.update { copy(departureAirport = it) }
+                    }
+                    FormField("To (IATA)", uiState.arrivalAirport, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) {
+                        viewModel.update { copy(arrivalAirport = it) }
+                    }
+                }
+
+                DateTimePickerField(
                     label = "Departure",
                     date = uiState.departureDate,
                     time = uiState.departureTime,
-                    onDateChange = { viewModel.update { copy(departureDate = it) } },
-                    onTimeChange = { viewModel.update { copy(departureTime = it) } },
+                    timezone = uiState.departureTimezone,
+                    onDateTimeChange = { d, t -> viewModel.update { copy(departureDate = d, departureTime = t) } },
+                    onTimezoneChange = { viewModel.update { copy(departureTimezone = it) } },
                 )
-                DateTimeFields(
+
+                DateTimePickerField(
                     label = "Arrival",
                     date = uiState.arrivalDate,
                     time = uiState.arrivalTime,
-                    onDateChange = { viewModel.update { copy(arrivalDate = it) } },
-                    onTimeChange = { viewModel.update { copy(arrivalTime = it) } },
+                    timezone = uiState.arrivalTimezone,
+                    onDateTimeChange = { d, t -> viewModel.update { copy(arrivalDate = d, arrivalTime = t) } },
+                    onTimezoneChange = { viewModel.update { copy(arrivalTimezone = it) } },
                 )
             }
 
             FormSection("Booking") {
-                FormField("Record Locator (PNR)", uiState.recordLocator, caps = KeyboardCapitalization.Characters) { viewModel.update { copy(recordLocator = it) } }
-                FormField("Ticket Number", uiState.ticketNumber, keyboardType = KeyboardType.Number) { viewModel.update { copy(ticketNumber = it) } }
+                FormField("Record Locator (PNR)", uiState.recordLocator, caps = KeyboardCapitalization.Characters) {
+                    viewModel.update { copy(recordLocator = it) }
+                }
+                FormField("Ticket Number", uiState.ticketNumber, keyboardType = KeyboardType.Number) {
+                    viewModel.update { copy(ticketNumber = it) }
+                }
             }
 
             FormSection("Seat") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FormField("Seat (e.g. 12A)", uiState.seat, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) { viewModel.update { copy(seat = it) } }
-                    FormField("Boarding Group", uiState.boardingGroup, modifier = Modifier.weight(1f)) { viewModel.update { copy(boardingGroup = it) } }
+                    FormField("Seat (e.g. 12A)", uiState.seat, modifier = Modifier.weight(1f), caps = KeyboardCapitalization.Characters) {
+                        viewModel.update { copy(seat = it) }
+                    }
+                    FormField("Boarding Group", uiState.boardingGroup, modifier = Modifier.weight(1f)) {
+                        viewModel.update { copy(boardingGroup = it) }
+                    }
                 }
-                FormField("Class (Y / W / J / F)", uiState.seatClass, caps = KeyboardCapitalization.Characters) { viewModel.update { copy(seatClass = it) } }
+                FormField("Class (Y / W / J / F)", uiState.seatClass, caps = KeyboardCapitalization.Characters) {
+                    viewModel.update { copy(seatClass = it) }
+                }
             }
 
             FormSection("Aircraft") {
-                FormField("Model (e.g. Boeing 737-800)", uiState.planeModel, caps = KeyboardCapitalization.Words) { viewModel.update { copy(planeModel = it) } }
-                FormField("Registration / N-code (e.g. N12345)", uiState.registration, caps = KeyboardCapitalization.Characters) { viewModel.update { copy(registration = it) } }
+                FormField("Model (e.g. Boeing 737-800)", uiState.planeModel, caps = KeyboardCapitalization.Words) {
+                    viewModel.update { copy(planeModel = it) }
+                }
+                FormField("Registration / N-code (e.g. N12345)", uiState.registration, caps = KeyboardCapitalization.Characters) {
+                    viewModel.update { copy(registration = it) }
+                }
             }
 
             FormSection("Miles & Segments") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FormField("MQM", uiState.mqm, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) { viewModel.update { copy(mqm = it) } }
-                    FormField("MQS", uiState.mqs, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) { viewModel.update { copy(mqs = it) } }
-                    FormField("MQD ($)", uiState.mqd, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) { viewModel.update { copy(mqd = it) } }
+                    FormField("MQM", uiState.mqm, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) {
+                        viewModel.update { copy(mqm = it) }
+                    }
+                    FormField("MQS", uiState.mqs, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) {
+                        viewModel.update { copy(mqs = it) }
+                    }
+                    FormField("MQD ($)", uiState.mqd, modifier = Modifier.weight(1f), keyboardType = KeyboardType.Number) {
+                        viewModel.update { copy(mqd = it) }
+                    }
                 }
-                FormField("Award Miles", uiState.awardMiles, keyboardType = KeyboardType.Number) { viewModel.update { copy(awardMiles = it) } }
+                FormField("Award Miles", uiState.awardMiles, keyboardType = KeyboardType.Number) {
+                    viewModel.update { copy(awardMiles = it) }
+                }
             }
 
             FormSection("Notes") {
@@ -131,78 +164,78 @@ fun AddEditFlightScreen(
 }
 
 /**
- * A row with a date button and a time button that each open native Android pickers.
+ * A single row that opens a DatePickerDialog, then immediately chains into a TimePickerDialog,
+ * followed by an editable timezone field.
  */
 @Composable
-private fun DateTimeFields(
+private fun DateTimePickerField(
     label: String,
     date: String,
     time: String,
-    onDateChange: (String) -> Unit,
-    onTimeChange: (String) -> Unit,
+    timezone: String,
+    onDateTimeChange: (date: String, time: String) -> Unit,
+    onTimezoneChange: (String) -> Unit,
 ) {
     val context = LocalContext.current
 
-    // Parse current values back to calendar fields so the pickers open at the right date/time
+    // Parse current values so pickers open at the right position
     val cal = remember(date, time) {
         Calendar.getInstance().also { c ->
-            val dateParts = date.split("-").mapNotNull { it.toIntOrNull() }
-            if (dateParts.size == 3) {
-                c.set(Calendar.YEAR,  dateParts[0])
-                c.set(Calendar.MONTH, dateParts[1] - 1)
-                c.set(Calendar.DAY_OF_MONTH, dateParts[2])
+            date.split("-").mapNotNull { it.toIntOrNull() }.takeIf { it.size == 3 }?.let { (y, m, d) ->
+                c.set(y, m - 1, d)
             }
-            val timeParts = time.split(":").mapNotNull { it.toIntOrNull() }
-            if (timeParts.size == 2) {
-                c.set(Calendar.HOUR_OF_DAY, timeParts[0])
-                c.set(Calendar.MINUTE,      timeParts[1])
+            time.split(":").mapNotNull { it.toIntOrNull() }.takeIf { it.size == 2 }?.let { (h, min) ->
+                c.set(Calendar.HOUR_OF_DAY, h)
+                c.set(Calendar.MINUTE, min)
             }
         }
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // Date picker button
+    val displayText = when {
+        date.isBlank() -> "$label date & time"
+        time.isBlank() -> date
+        else -> "$date  $time"
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Single button → DatePicker → TimePicker chained
         OutlinedButton(
             onClick = {
                 DatePickerDialog(
                     context,
                     { _, year, month, day ->
-                        onDateChange("%04d-%02d-%02d".format(year, month + 1, day))
+                        val dateStr = "%04d-%02d-%02d".format(year, month + 1, day)
+                        // Immediately chain into time picker
+                        TimePickerDialog(
+                            context,
+                            { _, hour, minute ->
+                                onDateTimeChange(dateStr, "%02d:%02d".format(hour, minute))
+                            },
+                            cal.get(Calendar.HOUR_OF_DAY),
+                            cal.get(Calendar.MINUTE),
+                            true, // 24-hour
+                        ).show()
                     },
                     cal.get(Calendar.YEAR),
                     cal.get(Calendar.MONTH),
                     cal.get(Calendar.DAY_OF_MONTH),
                 ).show()
             },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
-            Text(if (date.isBlank()) "$label Date" else date, maxLines = 1)
+            Text(displayText, maxLines = 1)
         }
 
-        // Time picker button
-        OutlinedButton(
-            onClick = {
-                TimePickerDialog(
-                    context,
-                    { _, hour, minute ->
-                        onTimeChange("%02d:%02d".format(hour, minute))
-                    },
-                    cal.get(Calendar.HOUR_OF_DAY),
-                    cal.get(Calendar.MINUTE),
-                    true, // 24-hour
-                ).show()
-            },
-            modifier = Modifier.weight(1f),
-        ) {
-            Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(if (time.isBlank()) "Time" else time, maxLines = 1)
-        }
+        // Timezone field
+        OutlinedTextField(
+            value = timezone,
+            onValueChange = onTimezoneChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("$label timezone (e.g. America/Chicago)") },
+            singleLine = true,
+        )
     }
 }
 
